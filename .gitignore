@@ -17,6 +17,14 @@ mcp-server/node_modules/
 .claude/settings.json
 .claude/settings.local.json
 
+# 환경변수 / 시크릿 (API 키, Webhook URL 포함)
+.env
+.env.local
+.dev.vars
+
+# 세션 로그 (API 키 등 민감 정보 포함될 수 있음)
+docs/history.md
+
 # OS
 .DS_Store
 Thumbs.db
