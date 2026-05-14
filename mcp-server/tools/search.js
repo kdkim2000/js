@@ -14,20 +14,18 @@ function getDb() {
   return _db;
 }
 
-/**
- * Ensure the articles table has a body column so FTS5 snippet() works.
- * The articles table was created without a body column but the FTS5 virtual
- * table references it via content=articles. Adding a blank body column
- * allows FTS5 snippet() to function (body snippets will be empty, title
- * snippets will work correctly).
- */
-function ensureBodyColumn(db) {
+// Run once at module load: ensure the articles table has a body column so
+// FTS5 snippet() works. The articles table was created without a body column
+// but the FTS5 virtual table references it via content=articles. Adding a
+// blank body column allows FTS5 snippet() to function (body snippets will be
+// empty, title snippets will work correctly).
+(function initDb() {
+  const db = new Database(DB_PATH);
   try {
     db.exec('ALTER TABLE articles ADD COLUMN body TEXT DEFAULT ""');
-  } catch (_e) {
-    // Column already exists — ignore
-  }
-}
+  } catch (_e) { /* 이미 존재 */ }
+  db.close();
+})();
 
 /**
  * search_articles: Full-text search using FTS5.
@@ -36,10 +34,6 @@ function ensureBodyColumn(db) {
  * @returns {{ slug: string, title: string, chapter: string, snippet: string }[]}
  */
 function searchArticles(query, limit = 5) {
-  const db = new Database(DB_PATH);
-  ensureBodyColumn(db);
-  db.close();
-
   const roDb = getDb();
 
   const safeLimit = Math.max(1, Math.min(Number(limit) || 5, 50));

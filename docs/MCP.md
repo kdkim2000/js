@@ -151,7 +151,7 @@ server.run('stdio');
 | `get_article` | P0 | ✅ 구현 완료 |
 | `get_toc` | P1 | ✅ 구현 완료 |
 | `list_articles` | P1 | ✅ 구현 완료 |
-| Resource: `article://` | P2 | 🔲 미구현 |
+| Resource: `article://` | P2 | ✅ 구현 완료 |
 
 ## 6. 활용 시나리오
 

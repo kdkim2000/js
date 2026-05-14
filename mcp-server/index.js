@@ -2,7 +2,17 @@
 
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
-const { CallToolRequestSchema, ListToolsRequestSchema } = require('@modelcontextprotocol/sdk/types.js');
+const {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
+} = require('@modelcontextprotocol/sdk/types.js');
+
+const fs = require('fs');
+const path = require('path');
+
+const ARTICLES_DIR = path.join(__dirname, '../data/articles');
 
 const { searchArticles } = require('./tools/search');
 const { getArticle } = require('./tools/article');
@@ -14,7 +24,7 @@ const { getToc, listArticles } = require('./tools/toc');
 
 const server = new Server(
   { name: 'js-tutorial', version: '1.0.0' },
-  { capabilities: { tools: {} } }
+  { capabilities: { tools: {}, resources: {} } }
 );
 
 // ---------------------------------------------------------------------------
@@ -174,6 +184,40 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         isError: true,
       };
   }
+});
+
+// ---------------------------------------------------------------------------
+// Resource list: article://{slug}
+// ---------------------------------------------------------------------------
+
+server.setRequestHandler(ListResourcesRequestSchema, async () => {
+  const files = fs.readdirSync(ARTICLES_DIR).filter(f => f.endsWith('.md'));
+  const resources = files.map(f => {
+    const slug = f.replace(/\.md$/, '');
+    return {
+      uri: `article://${slug}`,
+      name: slug,
+      mimeType: 'text/markdown',
+    };
+  });
+  return { resources };
+});
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+  const uri = request.params.uri;
+  const match = uri.match(/^article:\/\/([a-zA-Z0-9_-]+)$/);
+  if (!match) {
+    throw new Error(`지원하지 않는 URI 형식: ${uri}`);
+  }
+  const slug = match[1];
+  const article = getArticle(slug);
+  if (!article) {
+    throw new Error(`아티클을 찾을 수 없습니다: ${slug}`);
+  }
+  const text = `# ${article.title}\n\n${article.body}`;
+  return {
+    contents: [{ uri, mimeType: 'text/markdown', text }],
+  };
 });
 
 // ---------------------------------------------------------------------------
