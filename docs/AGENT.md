@@ -4,45 +4,50 @@
 
 ## 1. 프로젝트 이해
 
-- 크롤러(`crawler/`)와 사이트(`site/`)는 **독립된 Node.js 프로젝트**다.
+- 크롤러(`crawler/`), 사이트(`site/`), MCP 서버(`mcp-server/`)는 **독립된 Node.js 프로젝트**다.
   - 크롤러: `E:\apps\js\` 루트의 `package.json` 사용 (CommonJS)
-  - 사이트: `E:\apps\js\site\` 의 별도 `package.json` 사용 (ESM/TypeScript)
+  - 사이트: `E:\apps\js\site\` 의 별도 `package.json` 사용 (TypeScript)
+  - MCP: `E:\apps\js\mcp-server\` 의 별도 `package.json` 사용 (CommonJS)
 - `data/` 폴더는 크롤러가 생성하는 아티팩트다. 직접 편집하지 않는다.
-- 사이트는 `data/`를 상대 경로(`../data/`)로 참조한다.
+- 사이트는 `data/sites/{siteId}/`를 `site/lib/registry.ts`의 `getSiteDataDir(siteId)`로 접근한다.
+- `DEFAULT_SITE_ID = 'ko-javascript-info'`가 기존 `/[slug]` 라우트의 기본 사이트다.
 
 ## 2. 명령어
 
-### 크롤러 실행
+### 마이그레이션 (최초 1회)
 ```powershell
-# 1단계: TOC 수집
-node crawler/1-crawl-toc.js
+# 기존 data/ → data/sites/ko-javascript-info/ 이동 + registry.json 생성
+node crawler/migrate.js
+```
 
-# 2단계: 아티클 수집 (배치 0, 1, 2)
+### 제너릭 크롤러 (신규 사이트)
+```powershell
+# URL을 주면 sitemap/BFS로 크롤
+node crawler/generic/crawl.js --url=https://example.com/docs --id=example-docs
+node crawler/generic/crawl.js --url=https://example.com --id=my-site --name="My Site" --selector=".content" --strategy=bfs --maxDepth=3
+```
+
+### ko.javascript.info 전용 크롤러 (기존)
+```powershell
+node crawler/1-crawl-toc.js
 node crawler/2-crawl-articles.js --batch=0
 node crawler/2-crawl-articles.js --batch=1
 node crawler/2-crawl-articles.js --batch=2
-
-# 3단계: 인덱스 빌드
 node crawler/3-build-index.js
 ```
 
 ### 사이트 개발/빌드
 ```powershell
-# 개발 서버 (site/ 디렉토리 기준)
 cd site && npm run dev     # http://localhost:3000
-
-# 프로덕션 빌드
 cd site && npm run build
 cd site && npm run start
 ```
 
 ### 의존성 설치
 ```powershell
-# 루트 (크롤러)
-npm install
-
-# 사이트
-cd site && npm install
+npm install              # 루트 (크롤러)
+cd site && npm install   # 사이트
+cd mcp-server && npm install  # MCP 서버
 ```
 
 ## 3. 코드 작성 규칙
@@ -51,7 +56,8 @@ cd site && npm install
 - CommonJS (`require`/`module.exports`) 사용. ESM `import` 금지.
 - `axios` + `cheerio`로 HTTP 요청 및 HTML 파싱.
 - 모든 파일 I/O는 `path.join(__dirname, ...)` 절대 경로 기준.
-- 새 유틸리티는 `crawler/utils/`에 추가한다.
+- 제너릭 유틸리티는 `crawler/generic/utils/`, 공통 유틸은 `crawler/utils/`에 추가.
+- 사이트별 출력 경로: `data/sites/{siteId}/`.
 
 ### 사이트
 - TypeScript 사용. `any` 타입 최소화.
@@ -59,28 +65,35 @@ cd site && npm install
 - 서버 컴포넌트에서만 `better-sqlite3`와 파일시스템 접근.
 - 스타일은 Tailwind CSS v4 클래스만 사용. 인라인 style 속성 금지.
 - 새 컴포넌트는 `site/components/`, 서버 유틸은 `site/lib/`에 추가.
+- siteId 기본값: `DEFAULT_SITE_ID = 'ko-javascript-info'` (`site/lib/registry.ts`에서 import).
+- admin 라우트는 별도 `site/app/admin/layout.tsx` 사용 (getTOC 호출 없음).
 
 ## 4. 작업 전 확인 사항
 
-1. **크롤러 작업 시**: `data/toc.json`이 존재하는지 확인 후 2단계 진행.
-2. **사이트 작업 시**: `data/db.sqlite`와 `data/articles/`가 존재해야 빌드 성공.
-3. **검색 기능 변경 시**: `site/app/api/search/`와 `site/lib/db.ts` 함께 확인.
-4. **셀렉터 변경 시**: `ko.javascript.info` HTML 구조가 바뀌었을 수 있으므로 실제 페이지 확인.
+1. **신규 환경 셋업**: `node crawler/migrate.js` 먼저 실행해 registry.json과 sites/ 구조 생성.
+2. **크롤러 작업 시**: `data/sites/{siteId}/toc.json`이 존재하는지 확인.
+3. **사이트 작업 시**: `data/sites/{siteId}/db.sqlite`와 `articles/`가 존재해야 빌드 성공.
+4. **검색 기능 변경 시**: `site/app/api/search/`와 `site/lib/db.ts` 함께 확인.
+5. **lib 함수 변경 시**: `siteId` 파라미터 기본값이 `DEFAULT_SITE_ID`인지 확인.
+6. **셀렉터 변경 시**: 실제 사이트 HTML 구조 확인 후 crawlConfig.contentSelector 업데이트.
 
 ## 5. 금지 사항
 
-- `data/` 폴더 내 파일 직접 편집 금지 (크롤러가 생성하는 파일).
+- `data/` 폴더 내 파일 직접 편집 금지 (크롤러가 생성).
 - `site/node_modules/` 직접 편집 금지.
-- `db.sqlite`를 직접 수정하는 SQL 실행 금지 (항상 `3-build-index.js`로 재생성).
+- `db.sqlite`를 직접 수정하는 SQL 실행 금지 (build-index.js로 재생성).
 - 크롤링 딜레이를 500ms 이하로 줄이는 것 금지 (서버 부하 방지).
-- 원본 사이트 URL(`ko.javascript.info`)을 무단 스크래핑하는 스크립트 자동 실행 금지.
+- 사이트 URL을 무단 스크래핑하는 스크립트 자동 실행 금지.
+- `.dev.vars` 파일을 git에 커밋 금지 (API 키 포함).
 
 ## 6. 디버깅 가이드
 
 | 증상 | 확인 포인트 |
 |------|------------|
-| TOC가 비어 있음 | `.tabs__menu-button`, `#tab-1~3` 셀렉터 확인 |
-| 아티클 본문 없음 | `article.formatted` 셀렉터 확인 |
-| 검색 결과 없음 | `data/db.sqlite` 존재 여부, `search` FTS5 테이블 확인 |
+| TOC가 비어 있음 | `.tabs__menu-button`, `#tab-1~3` 셀렉터 확인 (ko.javascript.info 전용) |
+| 아티클 본문 없음 | crawlConfig.contentSelector 확인, 또는 제너릭 fallback 셀렉터 확인 |
+| 검색 결과 없음 | `data/sites/{siteId}/db.sqlite` 존재 여부, `search` FTS5 테이블 확인 |
 | 빌드 실패 | `site/` 에서 `npx tsc --noEmit`으로 타입 오류 확인 |
-| 이미지 깨짐 | `data/images/{slug}/` 디렉토리 및 파일 존재 여부 확인 |
+| 이미지 깨짐 | `data/sites/{siteId}/images/{slug}/` 존재 여부 확인 |
+| 크롤 상태 안 보임 | `data/sites/.crawl-status/{siteId}.json` 내용 확인 |
+| admin UI 렌더링 실패 | `site/app/admin/layout.tsx`가 getTOC 호출 없는지 확인 |

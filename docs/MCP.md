@@ -145,26 +145,60 @@ server.run('stdio');
 
 ## 5. 우선순위 및 상태
 
-| Tool | 우선순위 | 상태 |
-|------|---------|------|
-| `search_articles` | P0 | ✅ 구현 완료 |
-| `get_article` | P0 | ✅ 구현 완료 |
-| `get_toc` | P1 | ✅ 구현 완료 |
-| `list_articles` | P1 | ✅ 구현 완료 |
-| Resource: `article://` | P2 | ✅ 구현 완료 |
+| Tool / Resource | 우선순위 | 상태 |
+|----------------|---------|------|
+| `search_articles` | P0 | ✅ 완료 |
+| `get_article` | P0 | ✅ 완료 |
+| `get_toc` | P1 | ✅ 완료 |
+| `list_articles` | P1 | ✅ 완료 |
+| Resource: `article://` | P2 | ✅ 완료 |
+| `siteId` 파라미터 추가 (전 도구) | P0 | 🔲 예정 (M8) |
+| `list_sites` 도구 | P1 | 🔲 예정 (M8) |
+| Resource URI: `article://{siteId}/{slug}` | P1 | 🔲 예정 (M8) |
 
-## 6. 활용 시나리오
+## 6. 멀티사이트 확장 계획 (M8)
+
+모든 기존 도구에 `siteId` 선택적 파라미터 추가 (기본값: `ko-javascript-info`).
+
+```json
+{
+  "name": "search_articles",
+  "inputSchema": {
+    "properties": {
+      "query": { "type": "string" },
+      "limit": { "type": "number", "default": 5 },
+      "siteId": { "type": "string", "default": "ko-javascript-info", "description": "크롤된 사이트 ID" }
+    }
+  }
+}
+```
+
+신규 `list_sites` 도구:
+```json
+{
+  "name": "list_sites",
+  "description": "registry.json에 등록된 모든 사이트 목록 반환",
+  "inputSchema": { "type": "object", "properties": {} }
+}
+```
+
+Resource URI 변경:
+- 기존: `article://{slug}`
+- 신규: `article://{siteId}/{slug}` (예: `article://ko-javascript-info/closure`)
+- 기존 URI 형식 호환: siteId 없으면 `ko-javascript-info`로 간주
+
+## 7. 활용 시나리오
 
 ```
 사용자: "JavaScript 클로저에 대해 설명해줘"
-Claude: [search_articles("클로저") 호출]
+Claude: [search_articles("클로저", siteId="ko-javascript-info") 호출]
         → slug: "closure", title: "변수의 유효범위와 클로저"
-        [get_article("closure") 호출]
+        [get_article("closure", siteId="ko-javascript-info") 호출]
         → 아티클 본문 기반으로 설명
 ```
 
 ```
-사용자: "프로미스 관련 아티클 목록 보여줘"
-Claude: [list_articles({ chapter: "프로미스" }) 호출]
-        → 관련 아티클 목록 반환
+사용자: "어떤 사이트가 크롤되어 있어?"
+Claude: [list_sites() 호출]
+        → [{ id: "ko-javascript-info", name: "모던 자바스크립트 튜토리얼", totalArticles: 173 }, ...]
 ```

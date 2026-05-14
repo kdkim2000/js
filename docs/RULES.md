@@ -12,9 +12,13 @@
 | 규칙 | 내용 |
 |------|------|
 | `data/` 직접 편집 금지 | 크롤러 스크립트로만 생성/갱신 |
-| `crawler/` | CommonJS (`.js`), 실행 순서 반영한 숫자 prefix |
+| `data/sites/{siteId}/` | 사이트별 독립 데이터 디렉토리 |
+| `data/registry.json` | 등록 사이트 목록 (자동 생성) |
+| `crawler/` | CommonJS (`.js`), 숫자 prefix (기존) 또는 `generic/` 서브디렉토리 (신규) |
+| `crawler/generic/` | 제너릭 크롤러, CommonJS |
 | `site/components/` | PascalCase `.tsx` 컴포넌트 파일만 |
 | `site/lib/` | camelCase `.ts` 서버 유틸만 |
+| `site/app/admin/` | admin 라우트, 별도 layout.tsx 필수 |
 | `docs/` | 이 폴더에 문서 일괄 보관 |
 
 ## 3. 크롤러 규칙
@@ -45,7 +49,8 @@
 ### 데이터 접근 규칙
 - DB 접근은 `site/lib/db.ts`만 담당. 컴포넌트에서 직접 `better-sqlite3` import 금지.
 - 파일 읽기는 `site/lib/articles.ts`, `site/lib/toc.ts`를 통해서만.
-- 경로: `process.cwd()` = `site/` 기준, `../data/`로 data 접근.
+- 사이트별 데이터 경로: `site/lib/registry.ts`의 `getSiteDataDir(siteId)` 사용.
+- siteId 파라미터 기본값은 반드시 `DEFAULT_SITE_ID` 상수로 지정 (하드코딩 금지).
 
 ### API Route 규칙
 - API는 `app/api/{route}/route.ts` 구조.

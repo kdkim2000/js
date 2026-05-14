@@ -1,128 +1,228 @@
-# ARCHITECTURE — ko.javascript.info 크롤러 & 학습 사이트
+# ARCHITECTURE — 멀티사이트 크롤러 & 학습 플랫폼
 
 ## 1. 전체 구조
 
 ```
 E:\apps\js\
-├── crawler/                  # 크롤러 (Node.js, CommonJS)
-│   ├── 1-crawl-toc.js        # 1단계: TOC 수집
-│   ├── 2-crawl-articles.js   # 2단계: 아티클 수집
-│   ├── 3-build-index.js      # 3단계: SQLite 인덱스 빌드
+├── crawler/                      # 크롤러 (Node.js, CommonJS)
+│   ├── 1-crawl-toc.js            # ko.javascript.info 전용 TOC 수집
+│   ├── 2-crawl-articles.js       # ko.javascript.info 전용 아티클 수집
+│   ├── 3-build-index.js          # SQLite 인덱스 빌드 (단일 사이트)
+│   ├── migrate.js                # data/ → data/sites/ko-javascript-info/ 마이그레이션
+│   ├── generic/                  # 제너릭 멀티사이트 크롤러
+│   │   ├── crawl.js              # CLI 진입점 (--url, --id, --name, --selector)
+│   │   ├── discover.js           # URL 수집 (sitemap.xml 우선 → BFS fallback)
+│   │   ├── extract.js            # 콘텐츠 추출 + Markdown 변환
+│   │   ├── build-index.js        # siteId별 SQLite 인덱스 빌드
+│   │   └── utils/
+│   │       ├── slugify.js        # URL → slug 변환
+│   │       └── registry.js      # registry.json CRUD 헬퍼
 │   └── utils/
-│       ├── html-to-md.js     # HTML → Markdown 변환 (Turndown)
-│       └── rate-limiter.js   # delay, withRetry
-├── data/                     # 생성 데이터 (git 제외)
-│   ├── toc.json              # 목차 구조 (87KB)
-│   ├── metadata.json         # 아티클 메타데이터 배열 (59KB)
-│   ├── db.sqlite             # SQLite DB + FTS5 (1.3MB+)
-│   ├── articles/             # 아티클 Markdown 파일
-│   │   └── {slug}.md
-│   └── images/               # 다운로드된 이미지
-│       └── {slug}/{filename}
-├── site/                     # Next.js 16 사이트 (TypeScript)
+│       ├── html-to-md.js         # HTML → Markdown (Turndown + 커스텀 규칙)
+│       └── rate-limiter.js       # delay, withRetry
+│
+├── data/                         # 생성 데이터 (git 제외)
+│   ├── registry.json             # 등록 사이트 목록 + 크롤 상태
+│   └── sites/
+│       ├── ko-javascript-info/   # 기존 ko.javascript.info 데이터
+│       │   ├── toc.json
+│       │   ├── metadata.json
+│       │   ├── db.sqlite
+│       │   ├── articles/{slug}.md
+│       │   └── images/{slug}/{file}
+│       └── {siteId}/             # 제너릭 크롤러로 추가된 사이트
+│           └── ...동일 구조
+│
+├── site/                         # Next.js 16 사이트 (TypeScript, Tailwind v4)
 │   ├── app/
-│   │   ├── layout.tsx        # 루트 레이아웃 (헤더, 사이드바)
-│   │   ├── page.tsx          # 홈 (TOC 목록)
-│   │   ├── [slug]/page.tsx   # 아티클 페이지
-│   │   └── api/search/       # 검색 API Route
+│   │   ├── layout.tsx            # 루트 레이아웃 (헤더, 사이드바)
+│   │   ├── page.tsx              # 홈: 사이트 목록 허브
+│   │   ├── [slug]/page.tsx       # ko-javascript-info 기존 URL 호환
+│   │   ├── sites/
+│   │   │   └── [siteId]/
+│   │   │       ├── layout.tsx    # 사이트별 레이아웃
+│   │   │       ├── page.tsx      # 사이트 TOC 홈
+│   │   │       └── [...slug]/page.tsx  # 사이트별 아티클 (catch-all)
+│   │   ├── admin/
+│   │   │   ├── layout.tsx        # admin 전용 레이아웃 (사이드바 없음)
+│   │   │   ├── page.tsx          # 크롤 관리 대시보드
+│   │   │   └── components/
+│   │   │       ├── AddSiteForm.tsx
+│   │   │       ├── SiteCard.tsx
+│   │   │       └── CrawlProgress.tsx
+│   │   └── api/
+│   │       ├── search/route.ts   # FTS 검색 (siteId 파라미터)
+│   │       └── admin/
+│   │           ├── sites/route.ts           # GET/POST
+│   │           ├── sites/[siteId]/route.ts  # GET/DELETE
+│   │           └── crawl/[siteId]/route.ts  # POST(시작)/GET(SSE)
 │   ├── components/
-│   │   ├── Sidebar.tsx        # 좌측 목차 사이드바
-│   │   ├── SidebarWrapper.tsx # 사이드바 클라이언트 래퍼
-│   │   ├── SearchBar.tsx      # 검색 UI (debounce)
-│   │   ├── ArticleContent.tsx # Markdown 렌더링
-│   │   ├── ArticleNav.tsx     # 이전/다음 내비게이션
-│   │   ├── CodeBlock.tsx      # 코드 블록 표시
-│   │   ├── CodeRunner.tsx     # 브라우저 코드 실행
-│   │   └── ProgressTracker.tsx# 읽음 진도 추적
+│   │   ├── Sidebar.tsx           # 사이드바 (siteId 기반 경로)
+│   │   ├── SidebarWrapper.tsx
+│   │   ├── SearchBar.tsx         # 검색 (siteId props)
+│   │   ├── ArticleContent.tsx    # Markdown 렌더링
+│   │   ├── ArticleNav.tsx        # 이전/다음 (siteId props)
+│   │   ├── CodeRunner.tsx        # 브라우저 코드 실행
+│   │   └── ProgressTracker.tsx   # 읽음 진도 추적
 │   └── lib/
-│       ├── articles.ts        # 아티클 파일 읽기
-│       ├── db.ts              # SQLite 연결 + 검색
-│       └── toc.ts             # TOC JSON 읽기
-└── docs/                     # 프로젝트 문서
+│       ├── registry.ts           # SiteEntry 타입 + getSiteDataDir()
+│       ├── articles.ts           # 아티클 읽기 (siteId 파라미터)
+│       ├── db.ts                 # SQLite FTS 검색 (siteId별 DB 캐시)
+│       └── toc.ts                # TOC JSON 읽기 (siteId별 캐시)
+│
+├── mcp-server/                   # MCP 서버 (Claude Code 연동)
+│   ├── index.js                  # 진입점 + 모든 핸들러
+│   └── tools/
+│       ├── registry.js           # registry.json 헬퍼
+│       ├── search.js             # search_articles (siteId 파라미터)
+│       ├── article.js            # get_article (siteId 파라미터)
+│       └── toc.js                # get_toc, list_articles (siteId 파라미터)
+│
+└── docs/                         # 프로젝트 문서
 ```
 
-## 2. 데이터 흐름
+---
+
+## 2. 데이터 구조
+
+### `data/registry.json`
+
+```json
+{
+  "sites": [
+    {
+      "id": "ko-javascript-info",
+      "name": "모던 자바스크립트 튜토리얼",
+      "url": "https://ko.javascript.info",
+      "description": "한국어 JS 튜토리얼",
+      "addedAt": "2026-05-15T00:00:00Z",
+      "lastCrawledAt": "2026-05-15T00:00:00Z",
+      "crawlStatus": "done",
+      "totalArticles": 173,
+      "crawlConfig": {
+        "contentSelector": "article.formatted",
+        "strategy": "sitemap",
+        "maxDepth": 3,
+        "delayMs": 1200,
+        "userAgent": "MultiSite-Crawler/1.0"
+      }
+    }
+  ]
+}
+```
+
+`crawlStatus`: `"pending"` | `"running"` | `"done"` | `"error"`
+
+### `data/sites/{siteId}/` 구조
+
+| 파일 | 내용 |
+|------|------|
+| `toc.json` | 파트/챕터/아티클 계층 구조 |
+| `metadata.json` | globalOrder 정렬된 아티클 메타 배열 |
+| `db.sqlite` | `articles` 테이블 + `search` FTS5 가상 테이블 |
+| `articles/{slug}.md` | YAML frontmatter + Markdown 본문 |
+| `images/{slug}/{file}` | 다운로드된 이미지 |
+| `errors.json` | 크롤 실패 아티클 목록 |
+
+---
+
+## 3. 데이터 흐름
+
+### 제너릭 크롤러 (신규 사이트)
 
 ```
-ko.javascript.info
-        │
-        ▼ 1-crawl-toc.js (axios + cheerio)
-  data/toc.json
-  ┌─ parts[]
-  │   ├─ chapters[]
-  │   │   └─ articles[] ← { slug, title, url, part, chapter, globalOrder, prev, next }
-  │   └─ totalArticles: N
-        │
-        ▼ 2-crawl-articles.js (axios + cheerio + turndown)
-  data/articles/{slug}.md   ← frontmatter + Markdown body
-  data/images/{slug}/*.png  ← 로컬 이미지
-        │
-        ▼ 3-build-index.js (better-sqlite3)
-  data/db.sqlite
-  ┌─ TABLE articles (slug PK, title, url, part, ...)
-  └─ VIRTUAL TABLE search USING fts5 (title, chapter, body)
-  data/metadata.json         ← globalOrder 정렬된 메타 배열
-        │
-        ▼ Next.js 빌드 (next build)
-  정적 페이지 + API Routes
-        │
-        ▼ next dev / next start
-  브라우저 ← HTTP
+사용자 → /admin → URL 등록
+         ↓
+POST /api/admin/crawl/{siteId}
+         ↓
+child_process.spawn(crawler/generic/crawl.js)
+         ↓
+discover.js → sitemap.xml 또는 BFS → URL 목록
+         ↓
+extract.js × N → {slug}.md 저장
+         ↓
+build-index.js → db.sqlite + metadata.json
+         ↓
+registry.json 업데이트 (crawlStatus: done)
+         ↓
+GET /api/admin/crawl/{siteId} (SSE) → 실시간 진행 표시
 ```
 
-## 3. 크롤러 상세
+### ko.javascript.info 전용 크롤러 (기존)
 
-### 1단계: TOC 크롤링 (`1-crawl-toc.js`)
-- `https://ko.javascript.info` 메인 페이지 파싱
-- `.tabs__menu-button` → 파트 제목 추출
-- `#tab-1`, `#tab-2`, `#tab-3` → 파트별 챕터/아티클 추출
-- `globalOrder`, `prev`, `next` 링크 계산 후 `data/toc.json` 저장
+```
+node crawler/1-crawl-toc.js      → data/sites/ko-javascript-info/toc.json
+node crawler/2-crawl-articles.js → data/sites/ko-javascript-info/articles/
+node crawler/3-build-index.js    → data/sites/ko-javascript-info/db.sqlite
+```
 
-### 2단계: 아티클 크롤링 (`2-crawl-articles.js`)
-- `--batch=N` 인수로 배치 분할 (BATCH_SIZE=58, 약 3개 배치)
-- `article.formatted` 셀렉터로 본문 추출
-- 이미지 다운로드 후 경로 rewrite
-- Turndown으로 HTML→Markdown 변환 (코드블록/노트박스/정답 커스텀 규칙)
-- YAML frontmatter + Markdown 본문을 `{slug}.md`로 저장
-- 기존 파일은 스킵, 실패는 `errors.json`에 추가
+### Next.js 사이트 렌더링
 
-### 3단계: 인덱스 빌드 (`3-build-index.js`)
-- `db.sqlite` 재생성 (DROP + CREATE)
-- `articles` 테이블에 메타데이터 INSERT
-- `search` FTS5 가상 테이블에 `title + chapter + body` 인덱싱
-- `metadata.json`으로 globalOrder 정렬된 메타 배열 저장
+```
+브라우저 요청
+    ↓
+┌─ / → site/app/page.tsx
+│      → registry.json 읽기 → 사이트 목록 표시
+│
+├─ /[slug] → site/app/[slug]/page.tsx
+│      → lib/articles.ts(slug, 'ko-javascript-info')
+│      → lib/toc.ts('ko-javascript-info')
+│      → 기존 URL 호환
+│
+├─ /sites/{siteId} → site/app/sites/[siteId]/page.tsx
+│      → lib/toc.ts(siteId)
+│
+├─ /sites/{siteId}/{...slug} → site/app/sites/[siteId]/[...slug]/page.tsx
+│      → lib/articles.ts(slug, siteId)
+│
+├─ /admin → site/app/admin/page.tsx
+│      → /api/admin/sites (GET)
+│
+└─ /api/search?q=&siteId= → lib/db.ts(query, siteId)
+```
 
-## 4. Site 상세
+---
 
-### 라우팅
-| 경로 | 파일 | 렌더링 방식 |
-|------|------|------------|
-| `/` | `app/page.tsx` | SSG (빌드 시 정적) |
-| `/[slug]` | `app/[slug]/page.tsx` | SSG (generateStaticParams) |
-| `/api/search?q=` | `app/api/search/route.ts` | SSR (런타임 DB 쿼리) |
+## 4. 라우팅 테이블
 
-### 의존성
-| 라이브러리 | 용도 |
-|-----------|------|
-| next 16.2.6 | App Router 프레임워크 |
-| react 19 | UI |
-| tailwindcss v4 | 스타일링 |
-| better-sqlite3 | SQLite 읽기 (서버 사이드) |
-| react-markdown + remark-gfm | Markdown 렌더링 |
-| shiki | 서버 사이드 코드 문법 강조 |
-| gray-matter | frontmatter 파싱 |
+| 경로 | 파일 | 렌더링 | 설명 |
+|------|------|--------|------|
+| `/` | `app/page.tsx` | SSG | 사이트 목록 허브 |
+| `/[slug]` | `app/[slug]/page.tsx` | SSG | ko-javascript-info 호환 |
+| `/sites/[siteId]` | `app/sites/[siteId]/page.tsx` | SSG | 사이트 TOC 홈 |
+| `/sites/[siteId]/[...slug]` | `app/sites/[siteId]/[...slug]/page.tsx` | SSG | 사이트별 아티클 |
+| `/admin` | `app/admin/page.tsx` | CSR | 크롤 관리 대시보드 |
+| `/api/search` | `app/api/search/route.ts` | SSR | FTS 검색 (siteId 파라미터) |
+| `/api/admin/sites` | `app/api/admin/sites/route.ts` | SSR | 사이트 CRUD |
+| `/api/admin/crawl/[id]` | `app/api/admin/crawl/[siteId]/route.ts` | SSR | 크롤 트리거 + SSE |
 
-### 코드 하이라이팅 전략
-- 빌드 시 `codeToHtml` (Shiki, github-dark 테마)로 pre-render
-- `highlightedBlocks: Record<number, string>` 맵을 `ArticleContent`에 전달
-- 지원되지 않는 언어는 plain text fallback
+---
 
 ## 5. 주요 설계 결정
 
 | 결정 | 이유 |
 |------|------|
-| CommonJS (크롤러) | Node.js CLI 스크립트, ESM 변환 오버헤드 불필요 |
-| Markdown 저장 | 재크롤링 없이 사이트 재빌드 가능, 사람이 읽기 쉬움 |
-| SQLite FTS5 | 단일 파일 DB, 서버 불필요, 한국어 unicode61 tokenizer |
-| SSG + API Route | 아티클은 정적(빠름), 검색만 런타임(DB 필요) |
-| Shiki 서버 사이드 | 클라이언트 번들 크기 제로, 빌드 시 HTML 생성 |
+| `data/sites/{siteId}/` 구조 | 사이트별 독립성, 기존 gitignore 유지 (`data/` 전체 제외) |
+| `DEFAULT_SITE_ID = 'ko-javascript-info'` | 기존 `/[slug]` URL 호환 유지 |
+| `siteId` 기본값을 함수 시그니처에 포함 | 기존 호출부 수정 불필요 |
+| sitemap 우선 + BFS fallback | 대부분의 문서 사이트에 sitemap 존재; 없으면 링크 탐색 |
+| SSE로 크롤 진행 상태 전달 | 크롤은 장시간 작업 → 폴링 대신 서버 푸시 |
+| `/admin` 독립 레이아웃 | `getTOC()` 불필요, 크롤 완료 전 빌드 방지 |
+| `Map<siteId, Database>` DB 캐시 | 멀티사이트 DB 동시 유지, 재연결 오버헤드 제거 |
+| CommonJS (크롤러) | Node.js CLI 스크립트, ESM 변환 불필요 |
+| Markdown + SQLite FTS5 | 재크롤링 없이 사이트 재빌드, 한국어 unicode61 tokenizer |
+| SSG + API Route | 아티클 정적(빠름), 검색만 런타임(DB 필요) |
+
+---
+
+## 6. MCP 서버 구조
+
+| 도구 | 파라미터 | 설명 |
+|------|----------|------|
+| `search_articles` | query, limit, siteId? | FTS5 전문 검색 |
+| `get_article` | slug, siteId? | 아티클 본문 반환 |
+| `get_toc` | siteId? | 전체 목차 구조 반환 |
+| `list_articles` | part?, chapter?, siteId? | 아티클 목록 필터 |
+| `list_sites` | (없음) | 등록 사이트 목록 반환 |
+
+Resource URI: `article://{siteId}/{slug}` (예: `article://ko-javascript-info/closure`)
