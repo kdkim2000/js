@@ -10,7 +10,11 @@ interface Result {
   snippet: string;
 }
 
-export default function SearchBar() {
+interface Props {
+  siteId?: string;
+}
+
+export default function SearchBar({ siteId }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [open, setOpen] = useState(false);
@@ -34,7 +38,8 @@ export default function SearchBar() {
     timer.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const url = `/api/search?q=${encodeURIComponent(q)}${siteId ? `&siteId=${siteId}` : ""}`;
+        const res = await fetch(url);
         if (!res.ok) return;
         const data = await res.json();
         setResults(data);
@@ -65,7 +70,7 @@ export default function SearchBar() {
           {results.map((r) => (
             <Link
               key={r.slug}
-              href={`/${r.slug}`}
+              href={siteId ? `/sites/${siteId}/${r.slug}` : `/${r.slug}`}
               onClick={() => { setOpen(false); setQuery(""); }}
               className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0"
             >

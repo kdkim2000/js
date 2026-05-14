@@ -3,23 +3,25 @@
 const fs = require('fs');
 const path = require('path');
 
-const TOC_PATH = path.join(__dirname, '../../data/toc.json');
+const { DEFAULT_SITE_ID, getSiteDataDir } = require('./registry');
 
-let _toc = null;
+const _tocs = new Map();
 
-function getTocData() {
-  if (!_toc) {
-    _toc = JSON.parse(fs.readFileSync(TOC_PATH, 'utf8'));
+function getTocData(siteId = DEFAULT_SITE_ID) {
+  if (!_tocs.has(siteId)) {
+    const tocPath = path.join(getSiteDataDir(siteId), 'toc.json');
+    _tocs.set(siteId, JSON.parse(fs.readFileSync(tocPath, 'utf8')));
   }
-  return _toc;
+  return _tocs.get(siteId);
 }
 
 /**
  * get_toc: Return the full table of contents structure.
+ * @param {string} siteId
  * @returns {{ parts: Array, totalArticles: number }}
  */
-function getToc() {
-  const toc = getTocData();
+function getToc(siteId = DEFAULT_SITE_ID) {
+  const toc = getTocData(siteId);
   let totalArticles = 0;
   for (const part of toc.parts || []) {
     for (const chapter of part.chapters || []) {
@@ -33,10 +35,11 @@ function getToc() {
  * list_articles: Filter articles from toc.json by part number and/or chapter string (partial match).
  * @param {number|undefined} part  - Part number (1-3, optional)
  * @param {string|undefined} chapter - Chapter title partial match (optional)
+ * @param {string} siteId
  * @returns {Array<{ slug, title, chapter, part, partTitle, globalOrder, prev, next }>}
  */
-function listArticles(part, chapter) {
-  const toc = getTocData();
+function listArticles(part, chapter, siteId = DEFAULT_SITE_ID) {
+  const toc = getTocData(siteId);
   const results = [];
 
   for (const p of toc.parts || []) {

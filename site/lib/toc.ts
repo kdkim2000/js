@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { getSiteDataDir, DEFAULT_SITE_ID } from "./registry";
 
 export interface Article {
   slug: string;
@@ -31,20 +32,21 @@ export interface TOC {
   totalArticles: number;
 }
 
-let _toc: TOC | null = null;
+const _tocs = new Map<string, TOC>();
 
-export function getTOC(): TOC {
-  if (_toc) return _toc;
-  const tocPath = path.join(process.cwd(), "../data/toc.json");
-  _toc = JSON.parse(fs.readFileSync(tocPath, "utf8")) as TOC;
-  return _toc;
+export function getTOC(siteId: string = DEFAULT_SITE_ID): TOC {
+  if (_tocs.has(siteId)) return _tocs.get(siteId)!;
+  const tocPath = path.join(getSiteDataDir(siteId), "toc.json");
+  const toc = JSON.parse(fs.readFileSync(tocPath, "utf8")) as TOC;
+  _tocs.set(siteId, toc);
+  return toc;
 }
 
-export function getAllArticles(): Article[] {
-  const toc = getTOC();
+export function getAllArticles(siteId: string = DEFAULT_SITE_ID): Article[] {
+  const toc = getTOC(siteId);
   return toc.parts.flatMap((p) => p.chapters.flatMap((c) => c.articles));
 }
 
-export function getArticleMeta(slug: string): Article | null {
-  return getAllArticles().find((a) => a.slug === slug) ?? null;
+export function getArticleMeta(slug: string, siteId: string = DEFAULT_SITE_ID): Article | null {
+  return getAllArticles(siteId).find((a) => a.slug === slug) ?? null;
 }

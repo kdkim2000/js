@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { getTOC } from "@/lib/toc";
+import { DEFAULT_SITE_ID } from "@/lib/registry";
 import SidebarWrapper from "@/components/SidebarWrapper";
 import SearchBar from "@/components/SearchBar";
 import Link from "next/link";
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const toc = getTOC();
+  const toc = getTOC(DEFAULT_SITE_ID);
 
   return (
     <html lang="ko" className={`${geistSans.variable} ${geistMono.variable} h-full`}>

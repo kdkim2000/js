@@ -1,15 +1,15 @@
 import path from "path";
 import Database from "better-sqlite3";
+import { getSiteDataDir, DEFAULT_SITE_ID } from "./registry";
 
-const DB_PATH = path.join(process.cwd(), "../data/db.sqlite");
+const _dbs = new Map<string, ReturnType<typeof Database>>();
 
-let _db: Database.Database | null = null;
-
-function getDb(): Database.Database {
-  if (!_db) {
-    _db = new Database(DB_PATH, { readonly: true });
+function getDb(siteId: string): Database.Database {
+  if (!_dbs.has(siteId)) {
+    const dbPath = path.join(getSiteDataDir(siteId), "db.sqlite");
+    _dbs.set(siteId, new Database(dbPath, { readonly: true }));
   }
-  return _db;
+  return _dbs.get(siteId)!;
 }
 
 export interface SearchResult {
@@ -19,9 +19,9 @@ export interface SearchResult {
   snippet: string;
 }
 
-export function searchArticles(query: string): SearchResult[] {
+export function searchArticles(query: string, siteId: string = DEFAULT_SITE_ID): SearchResult[] {
   if (!query.trim()) return [];
-  const db = getDb();
+  const db = getDb(siteId);
   try {
     const rows = db
       .prepare(

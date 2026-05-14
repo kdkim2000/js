@@ -1,7 +1,6 @@
 import fs from "fs";
 import path from "path";
-
-const ARTICLES_DIR = path.join(process.cwd(), "../data/articles");
+import { getSiteDataDir, DEFAULT_SITE_ID } from "./registry";
 
 interface Frontmatter {
   title: string;
@@ -37,17 +36,19 @@ function parseFrontmatter(content: string): { meta: Frontmatter; body: string } 
   return { meta: meta as unknown as Frontmatter, body };
 }
 
-export function getArticle(slug: string): { meta: Frontmatter; body: string } | null {
-  const filePath = path.join(ARTICLES_DIR, `${slug}.md`);
+export function getArticle(slug: string, siteId: string = DEFAULT_SITE_ID): { meta: Frontmatter; body: string } | null {
+  const articlesDir = path.join(getSiteDataDir(siteId), "articles");
+  const filePath = path.join(articlesDir, `${slug}.md`);
   if (!fs.existsSync(filePath)) return null;
   const content = fs.readFileSync(filePath, "utf8");
   return parseFrontmatter(content);
 }
 
-export function getAllSlugs(): string[] {
-  if (!fs.existsSync(ARTICLES_DIR)) return [];
+export function getAllSlugs(siteId: string = DEFAULT_SITE_ID): string[] {
+  const articlesDir = path.join(getSiteDataDir(siteId), "articles");
+  if (!fs.existsSync(articlesDir)) return [];
   return fs
-    .readdirSync(ARTICLES_DIR)
+    .readdirSync(articlesDir)
     .filter((f) => f.endsWith(".md"))
     .map((f) => f.replace(".md", ""));
 }

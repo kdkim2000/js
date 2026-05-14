@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const ARTICLES_DIR = path.join(__dirname, '../../data/articles');
+const { DEFAULT_SITE_ID, getSiteDataDir } = require('./registry');
 
 /**
  * Parse YAML-like frontmatter from markdown content.
@@ -31,14 +31,15 @@ function parseFrontmatter(content) {
 /**
  * get_article: Read and parse a markdown article by slug.
  * @param {string} slug
+ * @param {string} siteId
  * @returns {{ title, chapter, part, partTitle, globalOrder, prev, next, body } | null}
  */
-function getArticle(slug) {
+function getArticle(slug, siteId = DEFAULT_SITE_ID) {
   // Sanitize slug: no path traversal
   const sanitized = slug.replace(/[^a-zA-Z0-9_-]/g, '');
   if (!sanitized) return null;
 
-  const filePath = path.join(ARTICLES_DIR, `${sanitized}.md`);
+  const filePath = path.join(getSiteDataDir(siteId), 'articles', `${sanitized}.md`);
   if (!fs.existsSync(filePath)) return null;
 
   const content = fs.readFileSync(filePath, 'utf8');

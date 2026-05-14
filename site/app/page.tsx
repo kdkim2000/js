@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { getTOC } from "@/lib/toc";
+import { getRegistry, DEFAULT_SITE_ID } from "@/lib/registry";
 
 export default function HomePage() {
-  const toc = getTOC();
+  const registry = getRegistry();
+  const toc = getTOC(DEFAULT_SITE_ID);
+
+  const otherSites = registry.sites.filter((s) => s.id !== DEFAULT_SITE_ID);
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-10">
@@ -12,6 +16,32 @@ export default function HomePage() {
           ko.javascript.info 기반 · {toc.totalArticles}개 아티클
         </p>
       </div>
+
+      {otherSites.length > 0 && (
+        <section className="mb-10">
+          <h2 className="text-lg font-bold mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+            다른 학습 사이트
+          </h2>
+          <ul className="grid gap-2">
+            {otherSites.map((site) => (
+              <li key={site.id}>
+                <Link
+                  href={`/sites/${site.id}`}
+                  className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition-colors group"
+                >
+                  <span className="flex-1 text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-yellow-700 dark:group-hover:text-yellow-400">
+                    {site.name}
+                  </span>
+                  {site.totalArticles && (
+                    <span className="text-xs text-gray-400">{site.totalArticles}개 아티클</span>
+                  )}
+                  <span className="text-gray-300 dark:text-gray-600 group-hover:text-yellow-400">→</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {toc.parts.map((part) => (
         <section key={part.partIndex} className="mb-12">

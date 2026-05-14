@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { searchArticles } from "@/lib/db";
+import { DEFAULT_SITE_ID } from "@/lib/registry";
 
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? "";
-  const results = searchArticles(q);
+  const siteId = req.nextUrl.searchParams.get("siteId") ?? DEFAULT_SITE_ID;
+  const results = searchArticles(q, siteId);
   return NextResponse.json(results);
 }

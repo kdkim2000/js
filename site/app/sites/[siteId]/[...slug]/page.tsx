@@ -1,18 +1,13 @@
 import { notFound } from "next/navigation";
 import { getArticle, getAllSlugs } from "@/lib/articles";
-import { DEFAULT_SITE_ID } from "@/lib/registry";
+import { getRegistry } from "@/lib/registry";
 import ArticleNav from "@/components/ArticleNav";
 import ProgressTracker from "@/components/ProgressTracker";
 import { codeToHtml } from "shiki";
 import ArticleContent from "@/components/ArticleContent";
 
-// Pre-generate all article pages at build time
-export async function generateStaticParams() {
-  return getAllSlugs(DEFAULT_SITE_ID).map((slug) => ({ slug }));
-}
-
 interface PageProps {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ siteId: string; slug: string[] }>;
 }
 
 async function preHighlightCodeBlocks(markdown: string): Promise<Record<number, string>> {
@@ -38,9 +33,22 @@ async function preHighlightCodeBlocks(markdown: string): Promise<Record<number, 
   return blocks;
 }
 
-export default async function ArticlePage({ params }: PageProps) {
-  const { slug } = await params;
-  const article = getArticle(slug, DEFAULT_SITE_ID);
+export async function generateStaticParams() {
+  const registry = getRegistry();
+  const params: { siteId: string; slug: string[] }[] = [];
+  for (const site of registry.sites) {
+    const slugs = getAllSlugs(site.id);
+    for (const slug of slugs) {
+      params.push({ siteId: site.id, slug: [slug] });
+    }
+  }
+  return params;
+}
+
+export default async function SiteArticlePage({ params }: PageProps) {
+  const { siteId, slug } = await params;
+  const slugStr = slug.join("/");
+  const article = getArticle(slugStr, siteId);
   if (!article) notFound();
 
   const { meta, body } = article;
@@ -59,7 +67,7 @@ export default async function ArticlePage({ params }: PageProps) {
       <header className="mb-8">
         <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">{meta.title}</h1>
         <div className="flex items-center gap-3 flex-wrap">
-          <ProgressTracker slug={slug} />
+          <ProgressTracker slug={slugStr} />
           <a
             href={meta.url}
             target="_blank"
@@ -77,7 +85,7 @@ export default async function ArticlePage({ params }: PageProps) {
       </div>
 
       {/* Prev/Next */}
-      <ArticleNav prev={meta.prev} next={meta.next} />
+      <ArticleNav prev={meta.prev} next={meta.next} siteId={siteId} />
     </article>
   );
 }
