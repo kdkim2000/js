@@ -1,5 +1,3 @@
-export const dynamic = "force-static";
-
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
@@ -48,7 +46,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const siteId = new URL(req.url).searchParams.get('siteId');
+  const siteId = req.nextUrl.searchParams.get('siteId');
   if (!siteId) return NextResponse.json({ error: 'siteId 필수' }, { status: 400 });
 
   const registry = readRegistry();
