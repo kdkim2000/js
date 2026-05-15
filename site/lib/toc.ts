@@ -34,12 +34,19 @@ export interface TOC {
 
 const _tocs = new Map<string, TOC>();
 
+const EMPTY_TOC: TOC = { parts: [], totalArticles: 0 };
+
 export function getTOC(siteId: string = DEFAULT_SITE_ID): TOC {
   if (_tocs.has(siteId)) return _tocs.get(siteId)!;
   const tocPath = path.join(getSiteDataDir(siteId), "toc.json");
-  const toc = JSON.parse(fs.readFileSync(tocPath, "utf8")) as TOC;
-  _tocs.set(siteId, toc);
-  return toc;
+  if (!fs.existsSync(tocPath)) return EMPTY_TOC;
+  try {
+    const toc = JSON.parse(fs.readFileSync(tocPath, "utf8")) as TOC;
+    _tocs.set(siteId, toc);
+    return toc;
+  } catch {
+    return EMPTY_TOC;
+  }
 }
 
 export function getAllArticles(siteId: string = DEFAULT_SITE_ID): Article[] {
