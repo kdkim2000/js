@@ -1,12 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "export",
   images: {
-    remotePatterns: [
-      { protocol: "https", hostname: "ko.javascript.info" },
-    ],
+    unoptimized: true,
   },
-  serverExternalPackages: ["better-sqlite3"],
   turbopack: {
     root: __dirname,
   },

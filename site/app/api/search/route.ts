@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import { NextRequest, NextResponse } from "next/server";
 import { searchArticles } from "@/lib/db";
 import { DEFAULT_SITE_ID } from "@/lib/registry";

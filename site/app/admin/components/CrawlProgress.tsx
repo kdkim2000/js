@@ -13,7 +13,7 @@ export default function CrawlProgress({ siteId, onDone }: { siteId: string; onDo
   const [prog, setProg] = useState<ProgressState>({ phase: 'discover', done: 0, total: 0, errors: 0, status: 'running' });
 
   useEffect(() => {
-    const es = new EventSource(`/api/admin/crawl/${siteId}`);
+    const es = new EventSource(`/api/admin/crawl?siteId=${siteId}`);
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);

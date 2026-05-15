@@ -38,9 +38,11 @@ node crawler/3-build-index.js
 
 ### 사이트 개발/빌드
 ```powershell
-cd site && npm run dev     # http://localhost:3000
-cd site && npm run build
-cd site && npm run start
+cd site && npm run dev          # http://localhost:3000 (SQLite + Admin 포함)
+cd site && npm run build        # next build (output: export) + pagefind 인덱싱
+cd site && npm run start        # 정적 파일 미리보기 (next start는 export 모드 미지원)
+npx serve out                   # 정적 out/ 로컬 미리보기
+vercel --prod                   # Vercel 정적 배포
 ```
 
 ### 의존성 설치
@@ -67,6 +69,17 @@ cd mcp-server && npm install  # MCP 서버
 - 새 컴포넌트는 `site/components/`, 서버 유틸은 `site/lib/`에 추가.
 - siteId 기본값: `DEFAULT_SITE_ID = 'ko-javascript-info'` (`site/lib/registry.ts`에서 import).
 - admin 라우트는 별도 `site/app/admin/layout.tsx` 사용 (getTOC 호출 없음).
+
+## 3.5 정적 배포 (Option A) 규칙
+
+- `next.config.ts`에 `output: 'export'` 설정 → `npm run build` 시 `out/` 생성
+- `images: { unoptimized: true }` 설정 (Image Optimization API 없음)
+- `serverExternalPackages` 불필요 — 런타임 서버 없음
+- API Routes (`/api/**`)는 정적 빌드에서 제외됨 → 배포 환경에서는 동작 안 함
+- 검색: `out/pagefind/` 에서 Pagefind JS API (`import('/pagefind/pagefind.js')`)
+- SearchBar: 개발 환경은 `/api/search` fetch, 정적 배포는 Pagefind 사용
+- `/admin` 페이지: 정적 배포에서는 "개발 서버(`npm run dev`)에서만 사용 가능" 안내 표시
+- `npm run build` 스크립트: `next build && npx pagefind --site out`
 
 ## 4. 작업 전 확인 사항
 

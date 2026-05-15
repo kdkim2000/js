@@ -72,10 +72,11 @@
 ## 5. 범위 외 (Out of Scope)
 
 - 사용자 계정/인증
-- 멀티 사용자 / 서버 배포
+- 멀티 사용자
 - 원본 사이트 콘텐츠 수정
 - 자동 재크롤링 스케줄러 (현재 수동/UI 실행)
 - 사이트별 완전 자동 HTML 구조 탐지 (셀렉터는 사용자가 직접 지정 가능)
+- 서버사이드 런타임 API (검색은 Pagefind 클라이언트 사이드로 대체)
 
 ## 6. 마일스톤
 
@@ -85,7 +86,44 @@
 | M2 | Next.js 사이트 기본 기능 (목차, 아티클, 검색) | ✅ 완료 |
 | M3 | UX 개선 (사이드바, 진도 추적, 코드 실행) | ✅ 완료 |
 | M4 | 전체 아티클 크롤링 완료 및 빌드 검증 | ✅ 완료 |
-| M5 | 제너릭 크롤러 + 멀티사이트 데이터 구조 전환 | 🔲 예정 |
-| M6 | Next.js 멀티사이트 뷰어 (`/sites/[siteId]/[slug]`) | 🔲 예정 |
-| M7 | 크롤 관리 UI (`/admin`) | 🔲 예정 |
-| M8 | MCP 서버 멀티사이트 지원 (`siteId` 파라미터, `list_sites`) | 🔲 예정 |
+| M5 | 제너릭 크롤러 + 멀티사이트 데이터 구조 전환 | ✅ 완료 |
+| M6 | Next.js 멀티사이트 뷰어 (`/sites/[siteId]/[slug]`) | ✅ 완료 |
+| M7 | 크롤 관리 UI (`/admin`) | ✅ 완료 |
+| M8 | MCP 서버 멀티사이트 지원 (`siteId` 파라미터, `list_sites`) | ✅ 완료 |
+| M9 | 정적 배포 (Option A): `output: 'export'` + Pagefind 검색 | 🔲 진행 중 |
+
+## 7. 배포 전략 (M9 — Option A: 완전 정적 내보내기)
+
+### 선택 근거
+
+| 항목 | 이유 |
+|------|------|
+| 개인 학습 도구 | 서버 운영 비용 불필요 |
+| 콘텐츠 변경 빈도 낮음 | 재배포로 충분히 대응 |
+| 크롤·관리는 로컬에서만 | Admin UI는 개발 서버(`npm run dev`)에서만 사용 |
+| SQLite FTS5 대체 | Pagefind가 빌드된 HTML을 인덱싱 → 클라이언트 검색 |
+
+### 구현 요약
+
+```
+[로컬 개발]
+  npm run dev        → SQLite + API Routes 포함 (full feature)
+  /admin 크롤 관리   → 개발 서버에서만 동작
+
+[정적 빌드]
+  next build         → next.config.ts output: 'export' → out/ 생성
+  npx pagefind       → out/ HTML을 인덱싱 → out/pagefind/ 생성
+  npm run build      → 위 두 단계를 순차 실행 (빌드 스크립트)
+
+[배포]
+  vercel --prod      → out/ 을 Vercel에 정적 배포
+  또는 GitHub Actions → 자동 빌드 + 배포
+```
+
+### 제약 사항
+
+- `output: 'export'` 시 API Routes (`/api/**`) 는 빌드에서 제외됨
+- Admin UI (`/admin`)는 정적 빌드에서 제외하거나 "로컬 전용" 안내 표시
+- `better-sqlite3`는 빌드 시에만 사용 (SSG generateStaticParams), 런타임 미포함
+- Pagefind 검색은 `out/pagefind/pagefind.js` 동적 import로 초기화
+- 이미지는 `unoptimized: true` (Next.js Image Optimization API 불필요)

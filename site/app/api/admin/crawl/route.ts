@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
@@ -13,8 +15,10 @@ function readRegistry(): Registry {
   catch { return { sites: [] }; }
 }
 
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
-  const { siteId } = await params;
+export async function POST(req: NextRequest) {
+  const siteId = req.nextUrl.searchParams.get('siteId');
+  if (!siteId) return NextResponse.json({ error: 'siteId 필수' }, { status: 400 });
+
   const registry = readRegistry();
   const site = registry.sites.find(s => s.id === siteId);
   if (!site) return NextResponse.json({ error: '사이트 없음' }, { status: 404 });
@@ -34,8 +38,10 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ si
   return NextResponse.json({ ok: true });
 }
 
-export async function GET(_req: NextRequest, { params }: { params: Promise<{ siteId: string }> }) {
-  const { siteId } = await params;
+export async function GET(req: NextRequest) {
+  const siteId = req.nextUrl.searchParams.get('siteId');
+  if (!siteId) return NextResponse.json({ error: 'siteId 필수' }, { status: 400 });
+
   const statusPath = path.join(process.cwd(), '..', 'data', 'sites', '.crawl-status', `${siteId}.json`);
 
   const stream = new ReadableStream({
@@ -72,7 +78,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ sit
         } catch { /* skip */ }
       }, 500);
 
-      // 5분 타임아웃
       setTimeout(() => {
         clearInterval(poll);
         controller.close();

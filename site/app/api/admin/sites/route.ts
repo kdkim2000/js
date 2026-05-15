@@ -1,3 +1,5 @@
+export const dynamic = "force-static";
+
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
@@ -43,4 +45,20 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 500 });
   }
+}
+
+export async function DELETE(req: NextRequest) {
+  const siteId = req.nextUrl.searchParams.get('siteId');
+  if (!siteId) return NextResponse.json({ error: 'siteId 필수' }, { status: 400 });
+
+  const registry = readRegistry();
+  const idx = registry.sites.findIndex(s => s.id === siteId);
+  if (idx === -1) return NextResponse.json({ error: '사이트 없음' }, { status: 404 });
+  registry.sites.splice(idx, 1);
+  writeRegistry(registry);
+
+  const siteDir = path.join(process.cwd(), '..', 'data', 'sites', siteId);
+  if (fs.existsSync(siteDir)) fs.rmSync(siteDir, { recursive: true, force: true });
+
+  return NextResponse.json({ ok: true });
 }

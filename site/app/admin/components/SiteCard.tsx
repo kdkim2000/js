@@ -17,7 +17,7 @@ export default function SiteCard({ site, onRefresh }: { site: SiteEntry; onRefre
   const [crawling, setCrawling] = useState(site.crawlStatus === 'running');
 
   const startCrawl = async () => {
-    const res = await fetch(`/api/admin/crawl/${site.id}`, { method: 'POST' });
+    const res = await fetch(`/api/admin/crawl?siteId=${site.id}`, { method: 'POST' });
     if (res.ok) {
       setCrawling(true);
     }
@@ -25,7 +25,7 @@ export default function SiteCard({ site, onRefresh }: { site: SiteEntry; onRefre
 
   const deleteSite = async () => {
     if (!confirm(`"${site.name}" 사이트를 삭제하시겠습니까?`)) return;
-    await fetch(`/api/admin/sites/${site.id}`, { method: 'DELETE' });
+    await fetch(`/api/admin/sites?siteId=${site.id}`, { method: 'DELETE' });
     onRefresh();
   };
 

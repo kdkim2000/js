@@ -27,9 +27,14 @@ node crawler/1-crawl-toc.js
 node crawler/2-crawl-articles.js --batch=0
 node crawler/3-build-index.js
 
-# 사이트
+# 사이트 개발 (SQLite + Admin 포함)
 cd site && npm run dev      # http://localhost:3000
-cd site && npm run build    # 정적 빌드
+
+# 정적 빌드 (output: export + Pagefind 인덱싱)
+cd site && npm run build    # out/ + out/pagefind/ 생성
+
+# Vercel 배포
+vercel --prod               # out/ 을 Vercel에 배포
 ```
 
 ## 구조 요약
@@ -52,8 +57,21 @@ mcp-server/      — MCP 서버 (Claude Code 연동)
 docs/            — 프로젝트 문서
 ```
 
+## 배포 전략 (Option A — 완전 정적 내보내기)
+
+```
+[로컬 개발]  npm run dev   → SQLite FTS5 검색 + Admin 크롤 UI 포함
+[정적 빌드]  npm run build → next build (output: export) + pagefind 인덱싱
+[배포]       vercel --prod → out/ 정적 파일만 서빙 (API Routes 없음)
+```
+
+- 검색: 개발 서버 = SQLite `/api/search`, 정적 배포 = Pagefind JS API
+- Admin UI: 정적 배포에서는 "개발 서버 전용" 안내 표시
+- `next.config.ts`: `output: 'export'`, `images: { unoptimized: true }`
+
 ## 중요 제약사항
 
 - `.dev.vars` (API 키 포함) 절대 git 커밋 금지
 - `data/` 디렉토리 전체 `.gitignore` 유지
 - `DEFAULT_SITE_ID = 'ko-javascript-info'` — 기존 URL 호환의 기준
+- API Routes는 개발 서버(`npm run dev`)에서만 동작 (정적 배포 불가)

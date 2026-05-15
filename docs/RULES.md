@@ -39,7 +39,19 @@
 - 모든 값은 `JSON.stringify()` 포맷 사용 (따옴표 이스케이프 자동 처리)
 - 필수 필드: `title`, `slug`, `url`, `part`, `partTitle`, `chapter`, `globalOrder`, `prev`, `next`
 
-## 4. 사이트(Next.js) 규칙
+## 4. 정적 배포 규칙 (Option A)
+
+| 규칙 | 내용 |
+|------|------|
+| `output: 'export'` | `next.config.ts`에 반드시 설정 |
+| 이미지 최적화 비활성화 | `images: { unoptimized: true }` |
+| API Routes 사용 금지 (배포용) | `/api/**` 는 개발 서버 전용 |
+| Pagefind 검색 | 빌드 후 `npx pagefind --site out` 실행 |
+| SearchBar 분기 | `process.env.NODE_ENV === 'production'` 또는 Pagefind JS import 시도로 구분 |
+| Admin UI | 정적 빌드에서 "개발 서버 전용" 안내로 대체 |
+| `serverExternalPackages` 불필요 | 런타임 Node.js 없으므로 제거 |
+
+## 5. 사이트(Next.js) 규칙
 
 ### 컴포넌트 규칙
 - 서버 컴포넌트가 기본. 클라이언트 전용 기능(useState, useEffect, localStorage)이 필요할 때만 `"use client"` 선언.
@@ -63,7 +75,7 @@
 - 다크모드: `dark:` prefix 클래스로 처리.
 - 색상 팔레트: 노란색(`yellow`) 계열 = 강조색, 회색 계열 = 기본 텍스트/배경.
 
-## 5. Git 규칙
+## 6. Git 규칙
 
 ### .gitignore 필수 항목
 ```
@@ -81,7 +93,7 @@ docs: 문서 업데이트
 refactor: 코드 정리
 ```
 
-## 6. 금지 패턴
+## 7. 금지 패턴
 
 ```js
 // ❌ 크롤러에서 ESM import
@@ -115,7 +127,7 @@ const meta: Record<string, unknown> = {};
 <div className="text-red-500">
 ```
 
-## 7. 성능 가이드라인
+## 8. 성능 가이드라인
 
 | 항목 | 목표 | 방법 |
 |------|------|------|

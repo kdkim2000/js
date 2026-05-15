@@ -2,6 +2,11 @@ import { getTOC } from "@/lib/toc";
 import { getRegistry } from "@/lib/registry";
 import Link from "next/link";
 
+export async function generateStaticParams() {
+  const registry = getRegistry();
+  return registry.sites.map((s) => ({ siteId: s.id }));
+}
+
 interface PageProps {
   params: Promise<{ siteId: string }>;
 }

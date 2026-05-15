@@ -198,7 +198,61 @@ node crawler/3-build-index.js    → data/sites/ko-javascript-info/db.sqlite
 
 ---
 
-## 5. 주요 설계 결정
+## 5. 배포 전략 (Option A — 완전 정적 내보내기)
+
+### 로컬 개발 vs 정적 빌드
+
+```
+[로컬 개발: npm run dev]
+  next dev
+  ├── /api/search     → SQLite FTS5 (better-sqlite3)
+  ├── /api/admin/**   → registry.json 읽기/쓰기, child_process.spawn
+  └── /admin          → 크롤 관리 UI 완전 동작
+
+[정적 빌드: npm run build]
+  next build (output: 'export') → out/
+  npx pagefind --site out        → out/pagefind/
+  ├── 모든 아티클 페이지 → HTML 정적 파일
+  ├── /pagefind/pagefind.js      → 클라이언트 사이드 검색
+  └── /admin → "개발 서버에서만 사용 가능" 안내 페이지 (정적)
+
+[배포: Vercel / GitHub Pages]
+  out/ 디렉토리를 그대로 서빙
+  API Routes 없음, 서버 없음
+```
+
+### 검색 전략 변경
+
+| 환경 | 검색 방식 |
+|------|---------|
+| 로컬 개발 | `fetch('/api/search?q=...')` → SQLite FTS5 |
+| 정적 빌드/배포 | `import('/pagefind/pagefind.js')` → Pagefind 클라이언트 검색 |
+
+SearchBar 컴포넌트는 `typeof window !== 'undefined' && window.__pagefind__` 여부로 분기하거나, 단순히 빌드 환경을 감지해 Pagefind를 사용한다.
+
+### `next.config.ts` 변경 사항
+
+```ts
+const nextConfig: NextConfig = {
+  output: 'export',                    // 정적 내보내기
+  images: { unoptimized: true },       // Image Optimization API 불필요
+  // serverExternalPackages 제거      // 런타임 서버 없음
+};
+```
+
+### `package.json` 빌드 스크립트
+
+```json
+"scripts": {
+  "dev": "next dev",
+  "build": "next build && npx pagefind --site out",
+  "start": "next start"
+}
+```
+
+---
+
+## 6. 주요 설계 결정
 
 | 결정 | 이유 |
 |------|------|
