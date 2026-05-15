@@ -22,7 +22,17 @@ export default function AdminPage() {
     }
   };
 
-  useEffect(() => { fetchSites(); }, []);
+  useEffect(() => {
+    fetchSites();
+  }, []);
+
+  // 크롤 진행 중인 사이트가 있으면 5초마다 사이트 목록 갱신
+  useEffect(() => {
+    const hasRunning = sites.some(s => s.crawlStatus === 'running');
+    if (!hasRunning) return;
+    const id = setInterval(fetchSites, 5000);
+    return () => clearInterval(id);
+  }, [sites]);
 
   if (staticBuild) {
     return (

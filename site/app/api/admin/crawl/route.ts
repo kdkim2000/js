@@ -26,15 +26,18 @@ export async function POST(req: NextRequest) {
   if (statusOnly) {
     const statusPath = path.join(process.cwd(), '..', 'data', 'sites', '.crawl-status', `${siteId}.json`);
     if (!fs.existsSync(statusPath)) {
-      return NextResponse.json({ type: 'progress', phase: 'discover', done: 0, total: 0, errors: 0 });
+      return NextResponse.json({ type: 'stale' });
     }
     try {
       const s = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
       if (s.status === 'done') return NextResponse.json({ type: 'done', totalArticles: s.progress?.done ?? 0 });
       if (s.status === 'error') return NextResponse.json({ type: 'error', message: s.errorMessage ?? '오류' });
+      // running 상태이지만 60초 이상 업데이트 없으면 stale(중단된 크롤)로 처리
+      const age = s.updatedAt ? Date.now() - new Date(s.updatedAt).getTime() : Infinity;
+      if (age > 60_000) return NextResponse.json({ type: 'stale' });
       return NextResponse.json({ type: 'progress', phase: s.phase ?? 'running', done: s.progress?.done ?? 0, total: s.progress?.total ?? 0, errors: s.progress?.errors ?? 0 });
     } catch {
-      return NextResponse.json({ type: 'progress', phase: 'discover', done: 0, total: 0, errors: 0 });
+      return NextResponse.json({ type: 'stale' });
     }
   }
 

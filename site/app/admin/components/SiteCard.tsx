@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { SiteEntry } from '@/lib/registry';
 import CrawlProgress from './CrawlProgress';
 import Link from 'next/link';
@@ -14,17 +14,33 @@ const STATUS_COLORS = {
 const STATUS_LABELS = { pending: '대기', running: '크롤 중', done: '완료', error: '오류' };
 
 export default function SiteCard({ site, onRefresh }: { site: SiteEntry; onRefresh: () => void }) {
-  const [crawling, setCrawling] = useState(site.crawlStatus === 'running');
+  const [crawling, setCrawling] = useState(false);
+
+  // 마운트 시: registry가 running이면 status 파일이 실제로 활성인지 확인
+  // stale(60초 이상 업데이트 없음)이면 crawling=false로 두어 버튼을 활성화
+  useEffect(() => {
+    if (site.crawlStatus !== 'running') return;
+    fetch('/api/admin/crawl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ siteId: site.id, statusOnly: true }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.type === 'progress') setCrawling(true);
+        // stale / done / error → crawling=false(이미 초기값), 버튼 활성화
+      })
+      .catch(() => {});
+  }, [site.id, site.crawlStatus]);
 
   const startCrawl = async () => {
-    const res = await fetch(`/api/admin/crawl?siteId=${site.id}`, {
+    setCrawling(true);
+    const res = await fetch('/api/admin/crawl', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ siteId: site.id }),
     });
-    if (res.ok) {
-      setCrawling(true);
-    }
+    if (!res.ok) setCrawling(false);
   };
 
   const deleteSite = async () => {
