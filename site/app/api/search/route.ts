@@ -5,8 +5,9 @@ import { searchArticles } from "@/lib/db";
 import { DEFAULT_SITE_ID } from "@/lib/registry";
 
 export async function GET(req: NextRequest) {
-  const q = req.nextUrl.searchParams.get("q") ?? "";
-  const siteId = req.nextUrl.searchParams.get("siteId") ?? DEFAULT_SITE_ID;
+  const sp = new URL(req.url).searchParams;
+  const q = sp.get("q") ?? "";
+  const siteId = sp.get("siteId") ?? DEFAULT_SITE_ID;
   const results = searchArticles(q, siteId);
   return NextResponse.json(results);
 }

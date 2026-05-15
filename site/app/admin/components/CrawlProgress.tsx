@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface ProgressState {
   phase: string;
@@ -11,26 +11,36 @@ interface ProgressState {
 
 export default function CrawlProgress({ siteId, onDone }: { siteId: string; onDone: () => void }) {
   const [prog, setProg] = useState<ProgressState>({ phase: 'discover', done: 0, total: 0, errors: 0, status: 'running' });
+  const doneRef = useRef(false);
 
   useEffect(() => {
-    const es = new EventSource(`/api/admin/crawl?siteId=${siteId}`);
-    es.onmessage = (e) => {
+    if (doneRef.current) return;
+
+    const poll = async () => {
       try {
-        const data = JSON.parse(e.data);
+        const res = await fetch(`/api/admin/crawl`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ siteId, statusOnly: true }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
         if (data.type === 'progress') {
           setProg({ phase: data.phase, done: data.done, total: data.total, errors: data.errors, status: 'running' });
         } else if (data.type === 'done') {
           setProg(p => ({ ...p, status: 'done' }));
-          es.close();
+          doneRef.current = true;
           onDone();
         } else if (data.type === 'error') {
-          setProg(p => ({ ...p, status: 'error' }));
-          es.close();
+          setProg(p => ({ ...p, status: 'error', phase: data.message ?? '오류' }));
+          doneRef.current = true;
         }
-      } catch { /* skip */ }
+      } catch { /* ignore */ }
     };
-    es.onerror = () => es.close();
-    return () => es.close();
+
+    poll();
+    const id = setInterval(() => { if (!doneRef.current) poll(); else clearInterval(id); }, 1500);
+    return () => clearInterval(id);
   }, [siteId, onDone]);
 
   const pct = prog.total > 0 ? Math.round((prog.done / prog.total) * 100) : 0;

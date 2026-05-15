@@ -16,8 +16,29 @@ function readRegistry(): Registry {
 }
 
 export async function POST(req: NextRequest) {
-  const siteId = req.nextUrl.searchParams.get('siteId');
+  let siteId: string | null = null;
+  let statusOnly = false;
+  try {
+    const body = await req.json();
+    siteId = body.siteId ?? null;
+    statusOnly = body.statusOnly ?? false;
+  } catch { /* no body */ }
   if (!siteId) return NextResponse.json({ error: 'siteId 필수' }, { status: 400 });
+
+  if (statusOnly) {
+    const statusPath = path.join(process.cwd(), '..', 'data', 'sites', '.crawl-status', `${siteId}.json`);
+    if (!fs.existsSync(statusPath)) {
+      return NextResponse.json({ type: 'progress', phase: 'discover', done: 0, total: 0, errors: 0 });
+    }
+    try {
+      const s = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+      if (s.status === 'done') return NextResponse.json({ type: 'done', totalArticles: s.progress?.done ?? 0 });
+      if (s.status === 'error') return NextResponse.json({ type: 'error', message: s.errorMessage ?? '오류' });
+      return NextResponse.json({ type: 'progress', phase: s.phase ?? 'running', done: s.progress?.done ?? 0, total: s.progress?.total ?? 0, errors: s.progress?.errors ?? 0 });
+    } catch {
+      return NextResponse.json({ type: 'progress', phase: 'discover', done: 0, total: 0, errors: 0 });
+    }
+  }
 
   const registry = readRegistry();
   const site = registry.sites.find(s => s.id === siteId);
@@ -39,57 +60,31 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const siteId = req.nextUrl.searchParams.get('siteId');
+  const siteId = new URL(req.url).searchParams.get('siteId');
   if (!siteId) return NextResponse.json({ error: 'siteId 필수' }, { status: 400 });
 
   const statusPath = path.join(process.cwd(), '..', 'data', 'sites', '.crawl-status', `${siteId}.json`);
 
-  const stream = new ReadableStream({
-    start(controller) {
-      const enc = new TextEncoder();
-      const send = (data: object) => {
-        controller.enqueue(enc.encode(`data: ${JSON.stringify(data)}\n\n`));
-      };
+  if (!fs.existsSync(statusPath)) {
+    return NextResponse.json({ type: 'progress', phase: 'discover', done: 0, total: 0, errors: 0 });
+  }
 
-      const poll = setInterval(() => {
-        if (!fs.existsSync(statusPath)) {
-          send({ type: 'progress', phase: 'discover', done: 0, total: 0, errors: 0 });
-          return;
-        }
-        try {
-          const s = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
-          if (s.status === 'done') {
-            send({ type: 'done', totalArticles: s.progress?.done ?? 0 });
-            clearInterval(poll);
-            controller.close();
-          } else if (s.status === 'error') {
-            send({ type: 'error', message: s.errorMessage ?? '알 수 없는 오류' });
-            clearInterval(poll);
-            controller.close();
-          } else {
-            send({
-              type: 'progress',
-              phase: s.phase ?? 'running',
-              done: s.progress?.done ?? 0,
-              total: s.progress?.total ?? 0,
-              errors: s.progress?.errors ?? 0,
-            });
-          }
-        } catch { /* skip */ }
-      }, 500);
-
-      setTimeout(() => {
-        clearInterval(poll);
-        controller.close();
-      }, 5 * 60 * 1000);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      Connection: 'keep-alive',
-    },
-  });
+  try {
+    const s = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+    if (s.status === 'done') {
+      return NextResponse.json({ type: 'done', totalArticles: s.progress?.done ?? 0 });
+    } else if (s.status === 'error') {
+      return NextResponse.json({ type: 'error', message: s.errorMessage ?? '알 수 없는 오류' });
+    } else {
+      return NextResponse.json({
+        type: 'progress',
+        phase: s.phase ?? 'running',
+        done: s.progress?.done ?? 0,
+        total: s.progress?.total ?? 0,
+        errors: s.progress?.errors ?? 0,
+      });
+    }
+  } catch {
+    return NextResponse.json({ type: 'progress', phase: 'discover', done: 0, total: 0, errors: 0 });
+  }
 }

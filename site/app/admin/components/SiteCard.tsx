@@ -17,7 +17,11 @@ export default function SiteCard({ site, onRefresh }: { site: SiteEntry; onRefre
   const [crawling, setCrawling] = useState(site.crawlStatus === 'running');
 
   const startCrawl = async () => {
-    const res = await fetch(`/api/admin/crawl?siteId=${site.id}`, { method: 'POST' });
+    const res = await fetch(`/api/admin/crawl?siteId=${site.id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ siteId: site.id }),
+    });
     if (res.ok) {
       setCrawling(true);
     }

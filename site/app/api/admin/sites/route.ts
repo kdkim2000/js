@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const siteId = req.nextUrl.searchParams.get('siteId');
+  const siteId = new URL(req.url).searchParams.get('siteId');
   if (!siteId) return NextResponse.json({ error: 'siteId 필수' }, { status: 400 });
 
   const registry = readRegistry();
