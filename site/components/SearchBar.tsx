@@ -61,8 +61,11 @@ async function pagefindSearch(query: string, siteId?: string): Promise<Result[]>
 }
 
 async function apiSearch(query: string, siteId?: string): Promise<Result[]> {
-  const url = `/api/search?q=${encodeURIComponent(query)}${siteId ? `&siteId=${siteId}` : ""}`;
-  const res = await fetch(url);
+  const res = await fetch("/api/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ q: query, siteId }),
+  });
   if (!res.ok) return [];
   return res.json();
 }
