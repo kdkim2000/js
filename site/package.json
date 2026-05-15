@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build && npx pagefind --site out",
+    "build": "cross-env NEXT_EXPORT=1 next build && npx pagefind --site out",
     "start": "next start"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "pagefind": "^1.5.2",
     "tailwindcss": "^4",
     "typescript": "^5"
