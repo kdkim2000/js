@@ -3,42 +3,24 @@
 const path = require('path');
 const Database = require('better-sqlite3');
 
-const DB_PATH = path.join(__dirname, '../../data/db.sqlite');
+const { getSiteDataDir } = require('./registry');
 
-let _db = null;
+const _dbs = new Map();
 
-function getDb() {
-  if (!_db) {
-    _db = new Database(DB_PATH, { readonly: true });
+function getDb(siteId) {
+  if (!_dbs.has(siteId)) {
+    const dbPath = path.join(getSiteDataDir(siteId), 'db.sqlite');
+    _dbs.set(siteId, new Database(dbPath, { readonly: true }));
   }
-  return _db;
+  return _dbs.get(siteId);
 }
 
-// Run once at module load: ensure the articles table has a body column so
-// FTS5 snippet() works. The articles table was created without a body column
-// but the FTS5 virtual table references it via content=articles. Adding a
-// blank body column allows FTS5 snippet() to function (body snippets will be
-// empty, title snippets will work correctly).
-(function initDb() {
-  const db = new Database(DB_PATH);
-  try {
-    db.exec('ALTER TABLE articles ADD COLUMN body TEXT DEFAULT ""');
-  } catch (_e) { /* 이미 존재 */ }
-  db.close();
-})();
-
-/**
- * search_articles: Full-text search using FTS5.
- * @param {string} query
- * @param {number} limit
- * @returns {{ slug: string, title: string, chapter: string, snippet: string }[]}
- */
-function searchArticles(query, limit = 5) {
-  const roDb = getDb();
+function searchArticles(query, limit = 5, siteId) {
+  if (!siteId) return [];
+  const roDb = getDb(siteId);
 
   const safeLimit = Math.max(1, Math.min(Number(limit) || 5, 50));
 
-  // Escape FTS5 special characters to avoid query syntax errors
   const escapedQuery = query.replace(/['"*^]/g, ' ').trim();
   if (!escapedQuery) return [];
 
@@ -53,7 +35,6 @@ function searchArticles(query, limit = 5) {
     `).all(escapedQuery, safeLimit);
     return rows;
   } catch (err) {
-    // If FTS5 query syntax error, fall back to LIKE search on articles table
     const likePattern = `%${escapedQuery}%`;
     return roDb.prepare(`
       SELECT slug, title, chapter,

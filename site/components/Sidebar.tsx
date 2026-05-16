@@ -8,9 +8,10 @@ import type { TOC } from "@/lib/toc";
 interface Props {
   toc: TOC;
   progress: Record<string, boolean>;
+  siteId?: string;
 }
 
-export default function Sidebar({ toc, progress }: Props) {
+export default function Sidebar({ toc, progress, siteId }: Props) {
   const pathname = usePathname();
   const currentSlug = pathname.startsWith("/") ? pathname.slice(1) : pathname;
   const [openChapters, setOpenChapters] = useState<Record<string, boolean>>({});
@@ -24,9 +25,11 @@ export default function Sidebar({ toc, progress }: Props) {
     return articles.some((a) => a.slug === currentSlug);
   }
 
+  const homeHref = siteId ? `/sites/${siteId}` : "/";
+
   return (
     <nav className="w-72 shrink-0 overflow-y-auto border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 h-screen sticky top-0 py-4">
-      <Link href="/" className="block px-4 pb-4 font-bold text-lg text-yellow-600 dark:text-yellow-400 hover:text-yellow-700">
+      <Link href={homeHref} className="block px-4 pb-4 font-bold text-lg text-yellow-600 dark:text-yellow-400 hover:text-yellow-700">
         모던 자바스크립트
       </Link>
 
@@ -71,7 +74,7 @@ export default function Sidebar({ toc, progress }: Props) {
                         return (
                           <li key={article.slug}>
                             <Link
-                              href={`/${article.slug}`}
+                              href={siteId ? `/sites/${siteId}/${article.slug}` : `/${article.slug}`}
                               className={`flex items-center gap-1.5 px-3 py-1 text-sm rounded-md my-0.5 ${
                                 isActive
                                   ? "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 font-medium"

@@ -10,7 +10,67 @@ interface Result {
   snippet: string;
 }
 
-export default function SearchBar() {
+interface Props {
+  siteId?: string;
+}
+
+function extractSlug(url: string): string {
+  const m = url.match(/\/sites\/[^/]+\/(.+?)(?:\/index\.html)?$/) ||
+            url.match(/^\/(.+?)(?:\/index\.html)?$/);
+  return m ? m[1] : url.replace(/^\//, "").replace(/\/index\.html$/, "");
+}
+
+// Loads pagefind by injecting an ES module script — bypasses the bundler entirely
+// so Turbopack never sees the runtime-only `/pagefind/pagefind.js` path.
+function loadPagefind(): Promise<Record<string, unknown>> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined") { reject(new Error("SSR")); return; }
+    const win = window as Window & { __pagefind__?: Record<string, unknown> };
+    if (win.__pagefind__) { resolve(win.__pagefind__); return; }
+
+    if (!document.getElementById("__pf_loader__")) {
+      const s = document.createElement("script");
+      s.id = "__pf_loader__";
+      s.type = "module";
+      s.textContent = [
+        "import * as pf from '/pagefind/pagefind.js';",
+        "window.__pagefind__ = pf;",
+        "window.dispatchEvent(new CustomEvent('__pf_ready__'));",
+      ].join("\n");
+      s.onerror = () => reject(new Error("pagefind not found"));
+      document.head.appendChild(s);
+    }
+
+    window.addEventListener("__pf_ready__", () => {
+      resolve((window as Window & { __pagefind__?: Record<string, unknown> }).__pagefind__!);
+    }, { once: true });
+  });
+}
+
+async function pagefindSearch(query: string, siteId?: string): Promise<Result[]> {
+  const pf = await loadPagefind();
+  const search = pf.search as (q: string) => Promise<{ results: { data: () => Promise<Record<string, unknown>> }[] }>;
+  const { results } = await search(query);
+  const data = await Promise.all(results.slice(0, 10).map((r) => r.data()));
+  return data.map((r) => ({
+    slug: extractSlug(String((r.url as string) ?? "")),
+    title: String(((r.meta as Record<string, unknown>)?.title) ?? r.url ?? ""),
+    chapter: String(((r.meta as Record<string, unknown>)?.chapter) ?? ""),
+    snippet: String((r.excerpt as string) ?? ""),
+  }));
+}
+
+async function apiSearch(query: string, siteId?: string): Promise<Result[]> {
+  const res = await fetch("/api/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ q: query, siteId }),
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export default function SearchBar({ siteId }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Result[]>([]);
   const [open, setOpen] = useState(false);
@@ -34,9 +94,13 @@ export default function SearchBar() {
     timer.current = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
-        if (!res.ok) return;
-        const data = await res.json();
+        // Pagefind first (static export), fall back to API (dev server)
+        let data: Result[] = [];
+        try {
+          data = await pagefindSearch(q, siteId);
+        } catch {
+          data = await apiSearch(q, siteId);
+        }
         setResults(data);
         setOpen(true);
       } finally {
@@ -65,7 +129,7 @@ export default function SearchBar() {
           {results.map((r) => (
             <Link
               key={r.slug}
-              href={`/${r.slug}`}
+              href={siteId ? `/sites/${siteId}/${r.slug}` : `/${r.slug}`}
               onClick={() => { setOpen(false); setQuery(""); }}
               className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0"
             >

@@ -12,8 +12,7 @@ const {
 const fs = require('fs');
 const path = require('path');
 
-const ARTICLES_DIR = path.join(__dirname, '../data/articles');
-
+const { readRegistry, getSiteDataDir } = require('./tools/registry');
 const { searchArticles } = require('./tools/search');
 const { getArticle } = require('./tools/article');
 const { getToc, listArticles } = require('./tools/toc');
@@ -23,9 +22,19 @@ const { getToc, listArticles } = require('./tools/toc');
 // ---------------------------------------------------------------------------
 
 const server = new Server(
-  { name: 'js-tutorial', version: '1.0.0' },
+  { name: 'multi-site-crawler', version: '1.0.0' },
   { capabilities: { tools: {}, resources: {} } }
 );
+
+// ---------------------------------------------------------------------------
+// Helper: resolve siteId — use provided value or fall back to first registered site
+// ---------------------------------------------------------------------------
+
+function resolveSiteId(args) {
+  if (args && args.siteId) return String(args.siteId);
+  const sites = readRegistry().sites;
+  return sites[0]?.id || '';
+}
 
 // ---------------------------------------------------------------------------
 // Tool list
@@ -34,19 +43,31 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
+      name: 'list_sites',
+      description: '등록된 모든 사이트 목록을 반환합니다.',
+      inputSchema: {
+        type: 'object',
+        properties: {},
+      },
+    },
+    {
       name: 'search_articles',
-      description: 'ko.javascript.info 아티클에서 키워드로 전문 검색합니다. FTS5 기반으로 한국어/영어 모두 지원합니다.',
+      description: '아티클에서 키워드로 전문 검색합니다. FTS5 기반으로 다국어를 지원합니다.',
       inputSchema: {
         type: 'object',
         properties: {
           query: {
             type: 'string',
-            description: '검색어 (한국어 또는 영어)',
+            description: '검색어',
           },
           limit: {
             type: 'number',
             description: '반환할 최대 결과 수 (기본값: 5, 최대: 50)',
             default: 5,
+          },
+          siteId: {
+            type: 'string',
+            description: '사이트 ID (list_sites 도구로 확인 가능. 생략 시 첫 번째 사이트 사용)',
           },
         },
         required: ['query'],
@@ -60,7 +81,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           slug: {
             type: 'string',
-            description: '아티클 슬러그 (예: "closure", "promise-basics")',
+            description: '아티클 슬러그',
+          },
+          siteId: {
+            type: 'string',
+            description: '사이트 ID (list_sites 도구로 확인 가능. 생략 시 첫 번째 사이트 사용)',
           },
         },
         required: ['slug'],
@@ -71,7 +96,12 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
       description: '파트/챕터/아티클 전체 목차 구조를 반환합니다.',
       inputSchema: {
         type: 'object',
-        properties: {},
+        properties: {
+          siteId: {
+            type: 'string',
+            description: '사이트 ID (list_sites 도구로 확인 가능. 생략 시 첫 번째 사이트 사용)',
+          },
+        },
       },
     },
     {
@@ -82,11 +112,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
         properties: {
           part: {
             type: 'number',
-            description: '파트 번호 (1: 코어 자바스크립트, 2: 브라우저, 3: 추가 주제). 생략 시 전체.',
+            description: '파트 번호. 생략 시 전체.',
           },
           chapter: {
             type: 'string',
-            description: '챕터 제목 부분 일치 문자열 (예: "프라미스", "클래스"). 생략 시 전체.',
+            description: '챕터 제목 부분 일치 문자열. 생략 시 전체.',
+          },
+          siteId: {
+            type: 'string',
+            description: '사이트 ID (list_sites 도구로 확인 가능. 생략 시 첫 번째 사이트 사용)',
           },
         },
       },
@@ -102,6 +136,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   switch (name) {
+    case 'list_sites': {
+      const registry = readRegistry();
+      return {
+        content: [{
+          type: 'text',
+          text: JSON.stringify(registry.sites.map(s => ({
+            id: s.id,
+            name: s.name,
+            url: s.url,
+            crawlStatus: s.crawlStatus,
+            totalArticles: s.totalArticles,
+            lastCrawledAt: s.lastCrawledAt,
+          })), null, 2),
+        }],
+      };
+    }
+
     case 'search_articles': {
       const query = String(args.query || '').trim();
       if (!query) {
@@ -111,7 +162,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
       }
       const limit = Number(args.limit) || 5;
-      const results = searchArticles(query, limit);
+      const siteId = resolveSiteId(args);
+      if (!siteId) {
+        return {
+          content: [{ type: 'text', text: '등록된 사이트가 없습니다. 먼저 사이트를 크롤링해주세요.' }],
+          isError: true,
+        };
+      }
+      const results = searchArticles(query, limit, siteId);
       return {
         content: [
           {
@@ -132,14 +190,20 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           isError: true,
         };
       }
-      const article = getArticle(slug);
+      const siteId = resolveSiteId(args);
+      if (!siteId) {
+        return {
+          content: [{ type: 'text', text: '등록된 사이트가 없습니다. 먼저 사이트를 크롤링해주세요.' }],
+          isError: true,
+        };
+      }
+      const article = getArticle(slug, siteId);
       if (!article) {
         return {
           content: [{ type: 'text', text: `슬러그 "${slug}"에 해당하는 아티클을 찾을 수 없습니다.` }],
           isError: true,
         };
       }
-      // Return metadata as JSON header + body as markdown
       const meta = {
         title: article.title,
         chapter: article.chapter,
@@ -156,7 +220,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 
     case 'get_toc': {
-      const toc = getToc();
+      const siteId = resolveSiteId(args);
+      if (!siteId) {
+        return {
+          content: [{ type: 'text', text: '등록된 사이트가 없습니다. 먼저 사이트를 크롤링해주세요.' }],
+          isError: true,
+        };
+      }
+      const toc = getToc(siteId);
       return {
         content: [{ type: 'text', text: JSON.stringify(toc, null, 2) }],
       };
@@ -165,7 +236,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     case 'list_articles': {
       const part = args.part !== undefined && args.part !== null ? Number(args.part) : undefined;
       const chapter = args.chapter !== undefined ? String(args.chapter) : undefined;
-      const results = listArticles(part, chapter);
+      const siteId = resolveSiteId(args);
+      if (!siteId) {
+        return {
+          content: [{ type: 'text', text: '등록된 사이트가 없습니다. 먼저 사이트를 크롤링해주세요.' }],
+          isError: true,
+        };
+      }
+      const results = listArticles(part, chapter, siteId);
       return {
         content: [
           {
@@ -187,37 +265,39 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 });
 
 // ---------------------------------------------------------------------------
-// Resource list: article://{slug}
+// Resource list: article://{siteId}/{slug}
 // ---------------------------------------------------------------------------
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  const files = fs.readdirSync(ARTICLES_DIR).filter(f => f.endsWith('.md'));
-  const resources = files.map(f => {
-    const slug = f.replace(/\.md$/, '');
-    return {
-      uri: `article://${slug}`,
-      name: slug,
-      mimeType: 'text/markdown',
-    };
-  });
+  const registry = readRegistry();
+  const resources = [];
+  for (const site of registry.sites) {
+    try {
+      const articlesDir = path.join(getSiteDataDir(site.id), 'articles');
+      if (!fs.existsSync(articlesDir)) continue;
+      const files = fs.readdirSync(articlesDir).filter(f => f.endsWith('.md'));
+      for (const f of files) {
+        const slug = f.replace(/\.md$/, '');
+        resources.push({
+          uri: `article://${site.id}/${slug}`,
+          name: `${site.name}/${slug}`,
+          mimeType: 'text/markdown',
+        });
+      }
+    } catch { /* skip */ }
+  }
   return { resources };
 });
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   const uri = request.params.uri;
-  const match = uri.match(/^article:\/\/([a-zA-Z0-9_-]+)$/);
-  if (!match) {
-    throw new Error(`지원하지 않는 URI 형식: ${uri}`);
-  }
-  const slug = match[1];
-  const article = getArticle(slug);
-  if (!article) {
-    throw new Error(`아티클을 찾을 수 없습니다: ${slug}`);
-  }
-  const text = `# ${article.title}\n\n${article.body}`;
-  return {
-    contents: [{ uri, mimeType: 'text/markdown', text }],
-  };
+  const match = uri.match(/^article:\/\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]+)$/);
+  if (!match) throw new Error(`지원하지 않는 URI 형식: ${uri} (올바른 형식: article://{siteId}/{slug})`);
+  const siteId = match[1];
+  const slug = match[2];
+  const article = getArticle(slug, siteId);
+  if (!article) throw new Error(`아티클을 찾을 수 없습니다: ${siteId}/${slug}`);
+  return { contents: [{ uri, mimeType: 'text/markdown', text: `# ${article.title}\n\n${article.body}` }] };
 });
 
 // ---------------------------------------------------------------------------
@@ -227,8 +307,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  // MCP stdio server does not log to stdout (that's reserved for protocol)
-  process.stderr.write('js-tutorial MCP server started\n');
+  process.stderr.write('multi-site-crawler MCP server started\n');
 }
 
 main().catch((err) => {
