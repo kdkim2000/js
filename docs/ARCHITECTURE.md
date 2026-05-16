@@ -32,8 +32,7 @@ E:\apps\js\
 │   │   ├── layout.tsx            # 루트 레이아웃 (최소 — html/body만)
 │   │   ├── page.tsx              # 홈: 등록 사이트 목록 허브
 │   │   ├── [slug]/
-│   │   │   ├── layout.tsx        # ko-javascript-info 전용 레이아웃 (레거시 호환)
-│   │   │   └── page.tsx          # /[slug] → ko-javascript-info 아티클 (레거시 URL)
+│   │   │   └── page.tsx          # /[slug] → 홈으로 리디렉트 (레거시 URL 스텁)
 │   │   ├── sites/
 │   │   │   └── [siteId]/
 │   │   │       ├── layout.tsx    # 사이트별 레이아웃 (사이드바 포함)

@@ -10,7 +10,7 @@
   - MCP: `E:\apps\js\mcp-server\` 의 별도 `package.json` 사용 (CommonJS)
 - `data/` 폴더는 크롤러가 생성하는 아티팩트다. 직접 편집하지 않는다.
 - 사이트는 `data/sites/{siteId}/`를 `site/lib/registry.ts`의 `getSiteDataDir(siteId)`로 접근한다.
-- `DEFAULT_SITE_ID = 'ko-javascript-info'`는 레거시 `/[slug]` 라우트 호환용 기본값이다.
+- `/[slug]` 라우트는 레거시 URL 스텁으로 홈(/)으로 리디렉트한다. `DEFAULT_SITE_ID` 상수 없음.
 
 ## 2. 명령어
 
@@ -59,7 +59,7 @@ cd mcp-server && npm install   # MCP 서버
 - 서버 컴포넌트에서만 `better-sqlite3`와 파일시스템 접근.
 - 스타일은 Tailwind CSS v4 클래스만 사용. 인라인 style 속성 금지.
 - 새 컴포넌트는 `site/components/`, 서버 유틸은 `site/lib/`에 추가.
-- siteId 기본값: `DEFAULT_SITE_ID = 'ko-javascript-info'` (`site/lib/registry.ts`에서 import).
+- `siteId`는 모든 lib 함수에 항상 명시적으로 전달한다. 기본값 상수 없음.
 - admin 라우트는 별도 `site/app/admin/layout.tsx` 사용 (getTOC 호출 없음).
 
 ## 3.5 정적 배포 (Option A) 규칙
@@ -68,7 +68,7 @@ cd mcp-server && npm install   # MCP 서버
 - `images: { unoptimized: true }` 설정 (Image Optimization API 없음)
 - API Routes: `export const dynamic = 'force-static'` 선언 필수 (`output: 'export'` 요구)
   - GET-only 라우트: force-static이 정적 응답 캐싱 → POST 방식으로 대체
-  - POST/DELETE 포함 라우트: force-static이어도 `ƒ Dynamic`으로 처리됨 (빌드에서 제외)
+  - **admin 라우트(`/api/admin/*`)는 예외 — force-static 선언 금지** (searchParams 등 동적 접근 필요)
 - 검색: 개발 환경은 `POST /api/search`(SQLite), 정적 배포는 Pagefind 사용
 - SearchBar: Pagefind 먼저 시도 → 실패 시 `/api/search` POST fallback
 - `/admin` 페이지: 정적 배포에서는 "개발 서버(`npm run dev`)에서만 사용 가능" 안내 표시
@@ -79,7 +79,7 @@ cd mcp-server && npm install   # MCP 서버
 2. **크롤러 작업 시**: `data/sites/{siteId}/toc.json`이 존재하는지 확인 (크롤 완료 후 생성됨).
 3. **사이트 작업 시**: `data/sites/{siteId}/db.sqlite`와 `articles/`가 존재해야 빌드 성공.
 4. **검색 기능 변경 시**: `site/app/api/search/route.ts`와 `site/lib/db.ts`, `site/components/SearchBar.tsx` 함께 확인.
-5. **lib 함수 변경 시**: `siteId` 파라미터 기본값이 `DEFAULT_SITE_ID`인지 확인.
+5. **lib 함수 변경 시**: `siteId` 파라미터가 항상 명시적으로 전달되는지 확인 (기본값 없음).
 6. **셀렉터 변경 시**: 실제 사이트 HTML 구조 확인 후 crawlConfig.contentSelector 업데이트.
 
 ## 5. 금지 사항

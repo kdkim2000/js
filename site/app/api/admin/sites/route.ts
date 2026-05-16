@@ -1,5 +1,3 @@
-export const dynamic = 'force-static';
-
 import { NextRequest, NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs';
@@ -59,6 +57,9 @@ export async function DELETE(req: NextRequest) {
 
   const siteDir = path.join(process.cwd(), '..', 'data', 'sites', siteId);
   if (fs.existsSync(siteDir)) fs.rmSync(siteDir, { recursive: true, force: true });
+
+  const statusFile = path.join(process.cwd(), '..', 'data', 'sites', '.crawl-status', `${siteId}.json`);
+  if (fs.existsSync(statusFile)) fs.rmSync(statusFile);
 
   return NextResponse.json({ ok: true });
 }

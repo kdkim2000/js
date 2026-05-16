@@ -43,10 +43,24 @@ export default function SiteCard({ site, onRefresh }: { site: SiteEntry; onRefre
     if (!res.ok) setCrawling(false);
   };
 
+  const [deleting, setDeleting] = useState(false);
+
   const deleteSite = async () => {
-    if (!confirm(`"${site.name}" 사이트를 삭제하시겠습니까?`)) return;
-    await fetch(`/api/admin/sites?siteId=${site.id}`, { method: 'DELETE' });
-    onRefresh();
+    if (!confirm(`"${site.name}" 사이트를 삭제하시겠습니까?\n\n크롤 데이터(아티클, DB)도 함께 삭제됩니다.`)) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/admin/sites?siteId=${site.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        alert(`삭제 실패 (${res.status}): ${body.error ?? '알 수 없는 오류'}`);
+        return;
+      }
+      onRefresh();
+    } catch {
+      alert('삭제 중 네트워크 오류가 발생했습니다.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -78,9 +92,10 @@ export default function SiteCard({ site, onRefresh }: { site: SiteEntry; onRefre
           </button>
           <button
             onClick={deleteSite}
-            className="text-sm px-3 py-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950"
+            disabled={deleting}
+            className="text-sm px-3 py-1.5 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50"
           >
-            삭제
+            {deleting ? '삭제 중...' : '삭제'}
           </button>
         </div>
       </div>
