@@ -7,6 +7,8 @@ function urlToId(url: string): string {
   } catch { return ''; }
 }
 
+const inputCls = 'w-full h-10 px-3 rounded-lg border border-gray-300 bg-white text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-500 transition-colors';
+
 export default function AddSiteForm({ onAdded }: { onAdded: () => void }) {
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
@@ -48,47 +50,70 @@ export default function AddSiteForm({ onAdded }: { onAdded: () => void }) {
   };
 
   return (
-    <form onSubmit={submit} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+    <form onSubmit={submit}
+      className="bg-white rounded-xl border border-gray-200 p-6"
+      style={{ boxShadow: 'var(--shadow-xs)' }}>
       <div className="grid grid-cols-2 gap-4">
+
+        {/* URL - full width */}
         <div className="col-span-2">
-          <label className="text-sm font-medium block mb-1">URL <span className="text-red-500">*</span></label>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">
+            URL <span className="text-red-600">*</span>
+          </label>
           <input
             type="url" value={url} onChange={e => setUrl(e.target.value)} required
             placeholder="https://docs.example.com"
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-sm"
+            className={inputCls}
           />
-          {autoId && <p className="text-xs text-gray-400 mt-1">ID: {autoId}</p>}
+          {autoId && (
+            <p className="text-xs text-gray-400 mt-1 font-mono">ID: {autoId}</p>
+          )}
+          <p className="text-xs text-gray-400 mt-0.5">절대 URL을 입력하세요 (https://...)</p>
         </div>
+
+        {/* Site name */}
         <div>
-          <label className="text-sm font-medium block mb-1">사이트 이름</label>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">사이트 이름</label>
           <input type="text" value={name} onChange={e => setName(e.target.value)}
             placeholder={autoId || '이름 입력'}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-sm"
+            className={inputCls}
           />
         </div>
+
+        {/* Content selector */}
         <div>
-          <label className="text-sm font-medium block mb-1">콘텐츠 셀렉터 (선택)</label>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">콘텐츠 셀렉터 (선택)</label>
           <input type="text" value={selector} onChange={e => setSelector(e.target.value)}
             placeholder="article, .content, main"
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-transparent text-sm"
+            className={inputCls}
           />
         </div>
+
+        {/* Strategy */}
         <div>
-          <label className="text-sm font-medium block mb-1">크롤 전략</label>
+          <label className="text-sm font-medium text-gray-700 block mb-1.5">크롤 전략</label>
           <select value={strategy} onChange={e => setStrategy(e.target.value as 'sitemap' | 'bfs')}
-            className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-sm"
-          >
+            className={inputCls}>
             <option value="sitemap">sitemap.xml (권장)</option>
             <option value="bfs">BFS 링크 탐색</option>
           </select>
         </div>
       </div>
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      <button type="submit" disabled={loading || !url.trim()}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? '등록 중...' : '사이트 추가'}
-      </button>
+
+      {error && <p className="text-sm text-red-500 mt-3">{error}</p>}
+
+      <div className="flex items-center justify-end gap-3 mt-5 pt-5 border-t border-gray-100">
+        <button type="button" onClick={() => { setUrl(''); setName(''); setSelector(''); }}
+          className="px-4 h-10 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          style={{ boxShadow: 'var(--shadow-xs)' }}>
+          초기화
+        </button>
+        <button type="submit" disabled={loading || !url.trim()}
+          className="px-4 h-10 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium disabled:opacity-50 transition-colors"
+          style={{ boxShadow: 'var(--shadow-xs)' }}>
+          {loading ? '등록 중...' : '+ 사이트 추가'}
+        </button>
+      </div>
     </form>
   );
 }

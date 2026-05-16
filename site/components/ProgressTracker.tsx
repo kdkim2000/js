@@ -29,25 +29,49 @@ export function useProgress(): [Progress, (slug: string, done: boolean) => void]
 
 interface Props {
   slug: string;
+  compact?: boolean;
 }
 
-export default function ProgressTracker({ slug }: Props) {
+export default function ProgressTracker({ slug, compact }: Props) {
   const [progress, mark] = useProgress();
   const done = progress[slug] ?? false;
+
+  if (compact) {
+    return (
+      <button
+        onClick={() => mark(slug, !done)}
+        className={`flex items-center gap-2 px-4 h-9 rounded-lg text-sm font-medium transition-colors ${
+          done
+            ? "bg-white border border-green-300 text-green-700 hover:bg-green-50"
+            : "bg-purple-600 hover:bg-purple-700 text-white"
+        }`}
+        style={{ boxShadow: 'var(--shadow-xs)' }}
+      >
+        {done && (
+          <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+            <span className="text-white text-[9px] font-bold">✓</span>
+          </span>
+        )}
+        {done ? "완료됨" : "완료로 표시"}
+      </button>
+    );
+  }
 
   return (
     <button
       onClick={() => mark(slug, !done)}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+      className={`flex items-center gap-1.5 px-3 h-7 rounded-full text-[12px] font-medium transition-colors ${
         done
-          ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700"
-          : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
+          ? "bg-green-50 border border-green-200 text-green-700"
+          : "bg-white border border-gray-300 text-gray-600 hover:border-purple-400 hover:text-purple-700"
       }`}
     >
-      <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${done ? "bg-green-500 border-green-500" : "border-gray-400"}`}>
-        {done && <span className="text-white text-xs">✓</span>}
+      <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+        done ? "bg-green-500 border-green-500" : "border-gray-400"
+      }`}>
+        {done && <span className="text-white text-[8px] font-bold leading-none">✓</span>}
       </span>
-      {done ? "학습 완료" : "완료로 표시"}
+      {done ? "완료" : "완료로 표시"}
     </button>
   );
 }

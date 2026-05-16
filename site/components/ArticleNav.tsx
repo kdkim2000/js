@@ -11,29 +11,41 @@ export default function ArticleNav({ prev, next, siteId }: Props) {
   const prevMeta = prev ? getArticleMeta(prev, siteId) : null;
   const nextMeta = next ? getArticleMeta(next, siteId) : null;
 
+  if (!prevMeta && !nextMeta) return null;
+
   return (
-    <nav className="flex justify-between items-center mt-12 pt-6 border-t border-gray-200 dark:border-gray-700">
-      <div className="flex-1">
-        {prevMeta && (
+    <nav className="grid grid-cols-2 gap-3 mt-10">
+      <div>
+        {prevMeta ? (
           <Link
             href={`/sites/${siteId}/${prev}`}
-            className="group flex flex-col gap-0.5 text-sm hover:text-yellow-600 dark:hover:text-yellow-400"
+            className="flex flex-col gap-1 p-[14px_18px] rounded-[10px] border border-gray-200 bg-white hover:border-purple-300 transition-colors group"
+            style={{ boxShadow: 'var(--shadow-xs)' }}
           >
-            <span className="text-xs text-gray-400 dark:text-gray-500">← 이전</span>
-            <span className="font-medium group-hover:underline">{prevMeta.title}</span>
+            <span className="text-[11px] font-mono uppercase tracking-wide text-gray-500 flex items-center gap-1">
+              ← 이전
+            </span>
+            <span className="text-[13px] font-semibold text-gray-900 line-clamp-1 group-hover:text-purple-700 transition-colors">
+              {prevMeta.title}
+            </span>
           </Link>
-        )}
+        ) : <div />}
       </div>
-      <div className="flex-1 text-right">
-        {nextMeta && (
+      <div>
+        {nextMeta ? (
           <Link
             href={`/sites/${siteId}/${next}`}
-            className="group flex flex-col gap-0.5 items-end text-sm hover:text-yellow-600 dark:hover:text-yellow-400"
+            className="flex flex-col gap-1 p-[14px_18px] rounded-[10px] border border-gray-200 bg-white hover:border-purple-300 transition-colors text-right group"
+            style={{ boxShadow: 'var(--shadow-xs)' }}
           >
-            <span className="text-xs text-gray-400 dark:text-gray-500">다음 →</span>
-            <span className="font-medium group-hover:underline">{nextMeta.title}</span>
+            <span className="text-[11px] font-mono uppercase tracking-wide text-gray-500 flex items-center justify-end gap-1">
+              다음 →
+            </span>
+            <span className="text-[13px] font-semibold text-gray-900 line-clamp-1 group-hover:text-purple-700 transition-colors">
+              {nextMeta.title}
+            </span>
           </Link>
-        )}
+        ) : <div />}
       </div>
     </nav>
   );

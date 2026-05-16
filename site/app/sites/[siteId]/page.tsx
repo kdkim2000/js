@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { getTOC } from "@/lib/toc";
 import { getRegistry } from "@/lib/registry";
 import Link from "next/link";
@@ -14,75 +15,21 @@ interface PageProps {
 export default async function SitePage({ params }: PageProps) {
   const { siteId } = await params;
   const toc = getTOC(siteId);
+
+  const firstSlug = toc.parts[0]?.chapters[0]?.articles[0]?.slug;
+  if (firstSlug) redirect(`/sites/${siteId}/${firstSlug}`);
+
   const registry = getRegistry();
   const site = registry.sites.find((s) => s.id === siteId);
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-10">
-      <div className="mb-10">
-        <h1 className="text-3xl font-bold mb-2">{site?.name ?? siteId}</h1>
-        <p className="text-gray-500 dark:text-gray-400">
-          {site?.url && (
-            <>
-              <a
-                href={site.url}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:underline"
-              >
-                {site.url}
-              </a>
-              {" · "}
-            </>
-          )}
-          {toc.totalArticles}개 아티클
-        </p>
-        {site?.description && (
-          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{site.description}</p>
-        )}
-      </div>
-
-      {toc.parts.map((part) => (
-        <section key={part.partIndex} className="mb-12">
-          <h2 className="text-xl font-bold mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-            <span className="text-yellow-500 mr-2">파트 {part.partIndex}</span>
-            {part.title}
-          </h2>
-
-          <div className="grid gap-4">
-            {part.chapters.map((chapter, ci) => (
-              <div
-                key={ci}
-                className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden"
-              >
-                <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 font-semibold text-sm text-gray-700 dark:text-gray-300">
-                  {chapter.title}
-                  <span className="ml-2 text-xs font-normal text-gray-400">
-                    {chapter.articles.length}개
-                  </span>
-                </div>
-                <ul className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {chapter.articles.map((article) => (
-                    <li key={article.slug}>
-                      <Link
-                        href={`/sites/${siteId}/${article.slug}`}
-                        className="flex items-center px-4 py-2.5 text-sm hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition-colors group"
-                      >
-                        <span className="flex-1 text-gray-700 dark:text-gray-300 group-hover:text-yellow-700 dark:group-hover:text-yellow-400">
-                          {article.title}
-                        </span>
-                        <span className="text-gray-300 dark:text-gray-600 group-hover:text-yellow-400">
-                          →
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </section>
-      ))}
+    <div className="max-w-[720px] mx-auto px-10 py-14 text-center">
+      <h1 className="text-2xl font-bold text-gray-900 mb-3">{site?.name ?? siteId}</h1>
+      <p className="text-gray-500 mb-6">아직 크롤된 아티클이 없습니다.</p>
+      <Link href="/admin"
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium transition-colors">
+        크롤 관리에서 시작하기
+      </Link>
     </div>
   );
 }

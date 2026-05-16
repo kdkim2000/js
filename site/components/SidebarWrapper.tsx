@@ -6,10 +6,12 @@ import type { TOC } from "@/lib/toc";
 
 interface Props {
   toc: TOC;
-  siteId?: string;
+  siteId: string;
+  siteName: string;
+  siteUrl?: string;
 }
 
-export default function SidebarWrapper({ toc, siteId }: Props) {
+export default function SidebarWrapper({ toc, siteId, siteName, siteUrl }: Props) {
   const [progress] = useProgress();
-  return <Sidebar toc={toc} progress={progress} siteId={siteId} />;
+  return <Sidebar toc={toc} progress={progress} siteId={siteId} siteName={siteName} siteUrl={siteUrl} />;
 }
