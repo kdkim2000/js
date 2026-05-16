@@ -25,7 +25,7 @@ function urlToSlug(url, baseUrl) {
 
 /**
  * URL에서 siteId용 식별자를 생성한다.
- * https://ko.javascript.info → ko-javascript-info
+ * https://example.com → example-com
  */
 function urlToSiteId(url) {
   try {

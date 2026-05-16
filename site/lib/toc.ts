@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { getSiteDataDir, DEFAULT_SITE_ID } from "./registry";
+import { getSiteDataDir } from "./registry";
 
 export interface Article {
   slug: string;
@@ -36,7 +36,7 @@ const _tocs = new Map<string, TOC>();
 
 const EMPTY_TOC: TOC = { parts: [], totalArticles: 0 };
 
-export function getTOC(siteId: string = DEFAULT_SITE_ID): TOC {
+export function getTOC(siteId: string): TOC {
   if (_tocs.has(siteId)) return _tocs.get(siteId)!;
   const tocPath = path.join(getSiteDataDir(siteId), "toc.json");
   if (!fs.existsSync(tocPath)) return EMPTY_TOC;
@@ -49,11 +49,11 @@ export function getTOC(siteId: string = DEFAULT_SITE_ID): TOC {
   }
 }
 
-export function getAllArticles(siteId: string = DEFAULT_SITE_ID): Article[] {
+export function getAllArticles(siteId: string): Article[] {
   const toc = getTOC(siteId);
   return toc.parts.flatMap((p) => p.chapters.flatMap((c) => c.articles));
 }
 
-export function getArticleMeta(slug: string, siteId: string = DEFAULT_SITE_ID): Article | null {
+export function getArticleMeta(slug: string, siteId: string): Article | null {
   return getAllArticles(siteId).find((a) => a.slug === slug) ?? null;
 }

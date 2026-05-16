@@ -1,8 +1,6 @@
 import path from 'path';
 import fs from 'fs';
 
-export const DEFAULT_SITE_ID = 'ko-javascript-info';
-
 export interface CrawlConfig {
   contentSelector?: string;
   strategy?: 'sitemap' | 'bfs';
@@ -27,7 +25,7 @@ export interface Registry {
   sites: SiteEntry[];
 }
 
-export function getSiteDataDir(siteId: string = DEFAULT_SITE_ID): string {
+export function getSiteDataDir(siteId: string): string {
   return path.join(process.cwd(), '..', 'data', 'sites', siteId);
 }
 

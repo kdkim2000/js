@@ -43,7 +43,6 @@ site/            — Next.js 16 사이트 (TypeScript, Tailwind v4)
     page.tsx     — 홈: 등록 사이트 목록 허브
     sites/       — 멀티사이트 뷰어 (/sites/[siteId]/[...slug])
     admin/       — 크롤 관리 UI (/admin)
-    [slug]/      — 레거시 URL 호환 (ko-javascript-info)
   lib/
     registry.ts  — 사이트 레지스트리 + 경로 헬퍼
 mcp-server/      — MCP 서버 (Claude Code 연동)
@@ -66,5 +65,12 @@ docs/            — 프로젝트 문서
 
 - `.dev.vars` (API 키 포함) 절대 git 커밋 금지
 - `data/` 디렉토리 전체 `.gitignore` 유지
-- `DEFAULT_SITE_ID = 'ko-javascript-info'` — 레거시 `/[slug]` URL 호환용
 - API Routes는 개발 서버(`npm run dev`)에서만 동작; 정적 배포에서는 Pagefind로 대체
+
+## Token Logging
+
+대화가 끝날 때마다 **mcp-server-cloud** 서버의 `log_usage` tool을 호출하세요.
+
+- model: 현재 대화 모델명 (예: claude-sonnet-4-6)
+- input_tokens / output_tokens: 이번 대화 추정 토큰 수
+- note: 작업 내용 한 줄 요약 (선택)

@@ -6,8 +6,6 @@ const path = require('path');
 const REGISTRY_PATH = path.join(__dirname, '../../data/registry.json');
 const DATA_SITES_DIR = path.join(__dirname, '../../data/sites');
 
-const DEFAULT_SITE_ID = 'ko-javascript-info';
-
 function readRegistry() {
   if (!fs.existsSync(REGISTRY_PATH)) return { sites: [] };
   try {
@@ -17,7 +15,7 @@ function readRegistry() {
   }
 }
 
-function getSiteDataDir(siteId = DEFAULT_SITE_ID) {
+function getSiteDataDir(siteId) {
   return path.join(DATA_SITES_DIR, siteId);
 }
 
@@ -30,4 +28,4 @@ function validateSiteId(siteId) {
   return true;
 }
 
-module.exports = { DEFAULT_SITE_ID, readRegistry, getSiteDataDir, getValidSiteIds, validateSiteId };
+module.exports = { readRegistry, getSiteDataDir, getValidSiteIds, validateSiteId };

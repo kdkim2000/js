@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { getSiteDataDir, DEFAULT_SITE_ID } from "./registry";
+import { getSiteDataDir } from "./registry";
 
 interface Frontmatter {
   title: string;
@@ -36,7 +36,7 @@ function parseFrontmatter(content: string): { meta: Frontmatter; body: string } 
   return { meta: meta as unknown as Frontmatter, body };
 }
 
-export function getArticle(slug: string, siteId: string = DEFAULT_SITE_ID): { meta: Frontmatter; body: string } | null {
+export function getArticle(slug: string, siteId: string): { meta: Frontmatter; body: string } | null {
   const articlesDir = path.join(getSiteDataDir(siteId), "articles");
   const filePath = path.join(articlesDir, `${slug}.md`);
   if (!fs.existsSync(filePath)) return null;
@@ -44,7 +44,7 @@ export function getArticle(slug: string, siteId: string = DEFAULT_SITE_ID): { me
   return parseFrontmatter(content);
 }
 
-export function getAllSlugs(siteId: string = DEFAULT_SITE_ID): string[] {
+export function getAllSlugs(siteId: string): string[] {
   const articlesDir = path.join(getSiteDataDir(siteId), "articles");
   if (!fs.existsSync(articlesDir)) return [];
   return fs

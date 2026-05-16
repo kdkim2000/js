@@ -1,6 +1,6 @@
 import path from "path";
 import Database from "better-sqlite3";
-import { getSiteDataDir, DEFAULT_SITE_ID } from "./registry";
+import { getSiteDataDir } from "./registry";
 
 const _dbs = new Map<string, ReturnType<typeof Database>>();
 
@@ -19,7 +19,7 @@ export interface SearchResult {
   snippet: string;
 }
 
-export function searchArticles(query: string, siteId: string = DEFAULT_SITE_ID): SearchResult[] {
+export function searchArticles(query: string, siteId: string): SearchResult[] {
   if (!query.trim()) return [];
   const db = getDb(siteId);
   try {
