@@ -28,3 +28,5 @@ docs/history.md
 # OS
 .DS_Store
 Thumbs.db
+
+*.log
